@@ -6,8 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, ForeignKey, Integer, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from memory_palace.database import Base
@@ -26,11 +25,12 @@ class ReviewSession(Base):
     __tablename__ = "review_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )
     room_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("rooms.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

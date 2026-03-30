@@ -7,9 +7,11 @@ from memory_palace.schemas.memory_item import (
     PositionSchema,
 )
 from memory_palace.schemas.review import (
+    MemoryItemSM2Response,
     ReviewRecordCreate,
     ReviewRecordResponse,
     ReviewSessionResponse,
+    RoomStatsResponse,
 )
 from memory_palace.schemas.room import RoomCreate, RoomResponse, RoomUpdate
 from memory_palace.schemas.user import UserCreate, UserResponse
@@ -17,6 +19,7 @@ from memory_palace.schemas.user import UserCreate, UserResponse
 __all__ = [
     "MemoryItemCreate",
     "MemoryItemResponse",
+    "MemoryItemSM2Response",
     "MemoryItemUpdate",
     "PositionSchema",
     "ReviewRecordCreate",
@@ -24,6 +27,7 @@ __all__ = [
     "ReviewSessionResponse",
     "RoomCreate",
     "RoomResponse",
+    "RoomStatsResponse",
     "RoomUpdate",
     "UserCreate",
     "UserResponse",
