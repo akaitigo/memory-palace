@@ -54,3 +54,29 @@ class ReviewSessionResponse(BaseModel):
     started_at: datetime
     completed_at: datetime | None
     review_records: list[ReviewRecordResponse] = Field(default_factory=list)
+
+
+class MemoryItemSM2Response(BaseModel):
+    """SM-2 parameters of a memory item after review update."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    ease_factor: float
+    interval: int
+    repetitions: int
+    last_reviewed_at: datetime | None
+
+
+class RoomStatsResponse(BaseModel):
+    """Schema for room review statistics."""
+
+    total_items: int = Field(..., description="Total memory items in the room")
+    reviewed_items: int = Field(..., description="Items reviewed at least once")
+    mastered_items: int = Field(..., description="Items with interval >= 21 days")
+    learning_items: int = Field(..., description="Items being learned (interval < 21)")
+    new_items: int = Field(..., description="Items never reviewed")
+    average_ease_factor: float | None = Field(None, description="Average ease factor")
+    total_reviews: int = Field(..., description="Total review records")
+    average_quality: float | None = Field(None, description="Average quality score")
+    reviews_today: int = Field(..., description="Reviews completed today")

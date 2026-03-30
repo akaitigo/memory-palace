@@ -115,6 +115,7 @@ max-branches = 12
 ]
 "src/**/api/**/*.py" = [
     "B008",    # FastAPI Depends() は引数デフォルトとして呼び出す必要がある
+    "TC003",   # FastAPI はパスパラメータ型をランタイムで解決するため uuid 等が必要
 ]
 "alembic/**/*.py" = [
     "ANN",     # マイグレーションの型注釈は任意
