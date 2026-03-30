@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, itemApi, roomApi } from "./api";
+import { ApiError, itemApi, reviewApi, roomApi } from "./api";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -166,6 +166,88 @@ describe("itemApi", () => {
 				`/api/rooms/${roomId}/items/i1`,
 				expect.objectContaining({ method: "DELETE" }),
 			);
+		});
+	});
+});
+
+describe("reviewApi", () => {
+	const roomId = "room-1";
+
+	describe("getQueue", () => {
+		it("fetches review queue for a room", async () => {
+			const queue = [{ id: "i1", content: "Test" }];
+			mockFetch.mockResolvedValueOnce(mockResponse(queue));
+
+			const result = await reviewApi.getQueue(roomId);
+			expect(result).toEqual(queue);
+			expect(mockFetch).toHaveBeenCalledWith(
+				`/api/rooms/${roomId}/review-queue`,
+				expect.objectContaining({ headers: expect.objectContaining({ "Content-Type": "application/json" }) }),
+			);
+		});
+	});
+
+	describe("recordReview", () => {
+		it("posts a review result", async () => {
+			const reviewResult = { id: "r1", quality: 5 };
+			mockFetch.mockResolvedValueOnce(mockResponse(reviewResult, 201));
+
+			const result = await reviewApi.recordReview(roomId, {
+				memory_item_id: "item-1",
+				quality: 5,
+				response_time_ms: 1000,
+			});
+
+			expect(result).toEqual(reviewResult);
+			expect(mockFetch).toHaveBeenCalledWith(
+				`/api/rooms/${roomId}/review`,
+				expect.objectContaining({
+					method: "POST",
+					body: expect.stringContaining("item-1"),
+				}),
+			);
+		});
+	});
+
+	describe("getStats", () => {
+		it("fetches room stats", async () => {
+			const stats = { total_items: 10, total_reviews: 25 };
+			mockFetch.mockResolvedValueOnce(mockResponse(stats));
+
+			const result = await reviewApi.getStats(roomId);
+			expect(result).toEqual(stats);
+		});
+	});
+
+	describe("getDailyStats", () => {
+		it("fetches daily stats with days parameter", async () => {
+			const daily = { entries: [] };
+			mockFetch.mockResolvedValueOnce(mockResponse(daily));
+
+			const result = await reviewApi.getDailyStats(roomId, 7);
+			expect(result).toEqual(daily);
+			expect(mockFetch).toHaveBeenCalledWith(
+				`/api/rooms/${roomId}/stats/daily?days=7`,
+				expect.objectContaining({ headers: expect.objectContaining({ "Content-Type": "application/json" }) }),
+			);
+		});
+
+		it("uses default 30 days", async () => {
+			const daily = { entries: [] };
+			mockFetch.mockResolvedValueOnce(mockResponse(daily));
+
+			await reviewApi.getDailyStats(roomId);
+			expect(mockFetch).toHaveBeenCalledWith(`/api/rooms/${roomId}/stats/daily?days=30`, expect.objectContaining({}));
+		});
+	});
+
+	describe("getForgettingCurve", () => {
+		it("fetches forgetting curve data", async () => {
+			const curves = { items: [] };
+			mockFetch.mockResolvedValueOnce(mockResponse(curves));
+
+			const result = await reviewApi.getForgettingCurve(roomId);
+			expect(result).toEqual(curves);
 		});
 	});
 });

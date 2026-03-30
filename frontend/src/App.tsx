@@ -1,9 +1,15 @@
+import { ReviewSession } from "@/components/ReviewSession";
 import { RoomEditor } from "@/components/RoomEditor";
+import { StatsDashboard } from "@/components/StatsDashboard";
 import { roomApi } from "@/lib/api";
 import type { Room, RoomCreateRequest } from "@/types/api";
 import { useCallback, useEffect, useState } from "react";
 
-type View = { type: "list" } | { type: "editor"; roomId: string };
+type View =
+	| { type: "list" }
+	| { type: "editor"; roomId: string }
+	| { type: "review"; roomId: string }
+	| { type: "stats"; roomId: string };
 
 export function App(): React.JSX.Element {
 	const [view, setView] = useState<View>({ type: "list" });
@@ -51,6 +57,31 @@ export function App(): React.JSX.Element {
 			setError(err instanceof Error ? err.message : "Failed to delete room");
 		}
 	};
+
+	if (view.type === "review") {
+		return (
+			<ReviewSession
+				roomId={view.roomId}
+				onComplete={() => setView({ type: "stats", roomId: view.roomId })}
+				onBack={() => {
+					setView({ type: "list" });
+					loadRooms();
+				}}
+			/>
+		);
+	}
+
+	if (view.type === "stats") {
+		return (
+			<StatsDashboard
+				roomId={view.roomId}
+				onBack={() => {
+					setView({ type: "list" });
+					loadRooms();
+				}}
+			/>
+		);
+	}
 
 	if (view.type === "editor") {
 		return (
@@ -201,22 +232,56 @@ export function App(): React.JSX.Element {
 								>
 									{room.name}
 								</button>
-								<button
-									type="button"
-									onClick={() => handleDeleteRoom(room.id)}
-									style={{
-										padding: "4px 10px",
-										backgroundColor: "transparent",
-										color: "#cc3333",
-										border: "1px solid #cc3333",
-										borderRadius: "4px",
-										cursor: "pointer",
-										fontSize: "0.8rem",
-									}}
-									data-testid={`delete-room-${room.id}`}
-								>
-									削除
-								</button>
+								<div style={{ display: "flex", gap: "6px" }}>
+									<button
+										type="button"
+										onClick={() => setView({ type: "review", roomId: room.id })}
+										style={{
+											padding: "4px 10px",
+											backgroundColor: "#1a4a2e",
+											color: "#44cc88",
+											border: "1px solid #2a8a4a",
+											borderRadius: "4px",
+											cursor: "pointer",
+											fontSize: "0.8rem",
+										}}
+										data-testid={`review-room-${room.id}`}
+									>
+										復習
+									</button>
+									<button
+										type="button"
+										onClick={() => setView({ type: "stats", roomId: room.id })}
+										style={{
+											padding: "4px 10px",
+											backgroundColor: "#1a2a4a",
+											color: "#4488ff",
+											border: "1px solid #2a4a8a",
+											borderRadius: "4px",
+											cursor: "pointer",
+											fontSize: "0.8rem",
+										}}
+										data-testid={`stats-room-${room.id}`}
+									>
+										統計
+									</button>
+									<button
+										type="button"
+										onClick={() => handleDeleteRoom(room.id)}
+										style={{
+											padding: "4px 10px",
+											backgroundColor: "transparent",
+											color: "#cc3333",
+											border: "1px solid #cc3333",
+											borderRadius: "4px",
+											cursor: "pointer",
+											fontSize: "0.8rem",
+										}}
+										data-testid={`delete-room-${room.id}`}
+									>
+										削除
+									</button>
+								</div>
 							</li>
 						))}
 					</ul>

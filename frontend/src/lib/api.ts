@@ -3,11 +3,16 @@
  */
 
 import type {
+	DailyStatsResponse,
+	ForgettingCurveResponse,
 	MemoryItem,
 	MemoryItemCreateRequest,
 	MemoryItemUpdateRequest,
+	ReviewRecordCreate,
+	ReviewRecordResponse,
 	Room,
 	RoomCreateRequest,
+	RoomStatsResponse,
 	RoomUpdateRequest,
 } from "@/types/api";
 
@@ -110,6 +115,35 @@ export const itemApi = {
 		return request<void>(`/rooms/${roomId}/items/${itemId}`, {
 			method: "DELETE",
 		});
+	},
+};
+
+// =============================================================================
+// Review API
+// =============================================================================
+
+export const reviewApi = {
+	getQueue(roomId: string): Promise<MemoryItem[]> {
+		return request<MemoryItem[]>(`/rooms/${roomId}/review-queue`);
+	},
+
+	recordReview(roomId: string, data: ReviewRecordCreate): Promise<ReviewRecordResponse> {
+		return request<ReviewRecordResponse>(`/rooms/${roomId}/review`, {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	},
+
+	getStats(roomId: string): Promise<RoomStatsResponse> {
+		return request<RoomStatsResponse>(`/rooms/${roomId}/stats`);
+	},
+
+	getDailyStats(roomId: string, days = 30): Promise<DailyStatsResponse> {
+		return request<DailyStatsResponse>(`/rooms/${roomId}/stats/daily?days=${days}`);
+	},
+
+	getForgettingCurve(roomId: string): Promise<ForgettingCurveResponse> {
+		return request<ForgettingCurveResponse>(`/rooms/${roomId}/stats/forgetting-curve`);
 	},
 };
 

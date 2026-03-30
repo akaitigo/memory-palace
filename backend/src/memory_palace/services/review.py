@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -228,3 +229,132 @@ def get_room_stats(db: Session, room_id: uuid.UUID) -> dict:
         "average_quality": round(float(avg_quality), 2) if avg_quality is not None else None,
         "reviews_today": reviews_today,
     }
+
+
+_MAX_DAILY_STATS_DAYS = 365
+_DEFAULT_DAILY_STATS_DAYS = 30
+_FORGETTING_CURVE_POINTS = 20
+_MAX_FORGETTING_CURVE_ITEMS = 20
+_CORRECT_QUALITY_THRESHOLD = 3
+_CONTENT_PREVIEW_LENGTH = 50
+_PERCENT_MULTIPLIER = 100
+_MIN_CURVE_DAYS = 7
+
+
+def get_daily_stats(db: Session, room_id: uuid.UUID, days: int = _DEFAULT_DAILY_STATS_DAYS) -> dict:
+    """Get daily review statistics for chart rendering.
+
+    Args:
+        db: Database session.
+        room_id: Room UUID.
+        days: Number of days to look back (max 365).
+
+    Returns:
+        Dictionary with 'entries' list of daily stats.
+    """
+    days = min(days, _MAX_DAILY_STATS_DAYS)
+    now = datetime.now(tz=UTC)
+    start_date = (now - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Get all review records for this room in the date range
+    session_ids_subquery = select(ReviewSession.id).where(ReviewSession.room_id == room_id)
+    records = list(
+        db.execute(
+            select(ReviewRecord).where(
+                ReviewRecord.session_id.in_(session_ids_subquery),
+                ReviewRecord.reviewed_at >= start_date,
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Group by date
+    daily_map: dict[str, list[int]] = {}
+    for record in records:
+        reviewed_at = _ensure_aware(record.reviewed_at)
+        date_str = reviewed_at.strftime("%Y-%m-%d")
+        if date_str not in daily_map:
+            daily_map[date_str] = []
+        daily_map[date_str].append(record.quality)
+
+    # Build entries for each day in the range
+    entries = []
+    current = start_date
+    while current <= now:
+        date_str = current.strftime("%Y-%m-%d")
+        qualities = daily_map.get(date_str, [])
+        review_count = len(qualities)
+        avg_q = round(sum(qualities) / len(qualities), 2) if qualities else None
+        correct_count = sum(1 for q in qualities if q >= _CORRECT_QUALITY_THRESHOLD)
+        correct_rate = round(correct_count / len(qualities) * _PERCENT_MULTIPLIER, 1) if qualities else None
+
+        entries.append(
+            {
+                "date": date_str,
+                "review_count": review_count,
+                "average_quality": avg_q,
+                "correct_rate": correct_rate,
+            }
+        )
+        current += timedelta(days=1)
+
+    return {"entries": entries}
+
+
+def get_forgetting_curves(db: Session, room_id: uuid.UUID) -> dict:
+    """Get forgetting curve data for items in a room.
+
+    Uses the formula R(t) = e^(-t/S) where S = interval * ease_factor (stability).
+
+    Args:
+        db: Database session.
+        room_id: Room UUID.
+
+    Returns:
+        Dictionary with 'items' list of forgetting curve data per item.
+    """
+    items = list(
+        db.execute(
+            select(MemoryItem)
+            .where(MemoryItem.room_id == room_id, MemoryItem.last_reviewed_at.isnot(None))
+            .order_by(MemoryItem.last_reviewed_at.desc())
+            .limit(_MAX_FORGETTING_CURVE_ITEMS)
+        )
+        .scalars()
+        .all()
+    )
+
+    result_items = []
+    for item in items:
+        stability = item.interval * item.ease_factor
+        # Prevent division by zero
+        if stability <= 0:
+            stability = 1.0
+
+        # Generate curve points from 0 to 2 * interval days
+        max_days = max(item.interval * 2, _MIN_CURVE_DAYS)
+        curve_points = []
+        for i in range(_FORGETTING_CURVE_POINTS + 1):
+            t = (i / _FORGETTING_CURVE_POINTS) * max_days
+            retention = math.exp(-t / stability)
+            curve_points.append(
+                {
+                    "days_since_review": round(t, 2),
+                    "retention": round(retention, 4),
+                }
+            )
+
+        content_preview = (
+            item.content[:_CONTENT_PREVIEW_LENGTH] if len(item.content) > _CONTENT_PREVIEW_LENGTH else item.content
+        )
+        result_items.append(
+            {
+                "item_id": item.id,
+                "content": content_preview,
+                "stability": round(stability, 2),
+                "curve": curve_points,
+            }
+        )
+
+    return {"items": result_items}
