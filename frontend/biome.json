@@ -36,7 +36,8 @@
 					}
 				},
 				"noForEach": "warn",
-				"useSimplifiedLogicExpression": "warn"
+				"useSimplifiedLogicExpression": "warn",
+				"useLiteralKeys": "off"
 			},
 			"correctness": {
 				"noUnusedImports": "error",
