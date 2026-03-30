@@ -113,6 +113,9 @@ max-branches = 12
 "src/**/schemas/**/*.py" = [
     "TCH003",  # Pydantic BaseModel はランタイムで型解決が必要
 ]
+"src/**/api/**/*.py" = [
+    "B008",    # FastAPI Depends() は引数デフォルトとして呼び出す必要がある
+]
 "alembic/**/*.py" = [
     "ANN",     # マイグレーションの型注釈は任意
     "ERA001",  # コメントアウトコード許可
