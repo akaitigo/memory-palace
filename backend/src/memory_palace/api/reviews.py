@@ -5,18 +5,26 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from memory_palace.database import get_db
 from memory_palace.models.room import Room
 from memory_palace.schemas.memory_item import MemoryItemResponse
 from memory_palace.schemas.review import (
+    DailyStatsResponse,
+    ForgettingCurveResponse,
     ReviewRecordCreate,
     ReviewRecordResponse,
     RoomStatsResponse,
 )
-from memory_palace.services.review import get_review_queue, get_room_stats, record_review
+from memory_palace.services.review import (
+    get_daily_stats,
+    get_forgetting_curves,
+    get_review_queue,
+    get_room_stats,
+    record_review,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -92,3 +100,34 @@ def get_stats(
     """Get review statistics for a room."""
     _get_room_or_404(db, room_id)
     return get_room_stats(db, room_id)
+
+
+@router.get(
+    "/{room_id}/stats/daily",
+    response_model=DailyStatsResponse,
+    summary="Get daily review statistics",
+    description="Returns daily review counts and accuracy rates for chart rendering.",
+)
+def get_daily_stats_endpoint(
+    room_id: uuid.UUID,
+    days: int = Query(default=30, ge=1, le=365, description="Number of days to look back (1-365)"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Get daily review statistics for a room."""
+    _get_room_or_404(db, room_id)
+    return get_daily_stats(db, room_id, days)
+
+
+@router.get(
+    "/{room_id}/stats/forgetting-curve",
+    response_model=ForgettingCurveResponse,
+    summary="Get forgetting curve data",
+    description="Returns predicted forgetting curves for reviewed items using R(t) = e^(-t/S).",
+)
+def get_forgetting_curve_endpoint(
+    room_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Get forgetting curve data for a room's items."""
+    _get_room_or_404(db, room_id)
+    return get_forgetting_curves(db, room_id)

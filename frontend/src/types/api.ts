@@ -57,3 +57,61 @@ export interface MemoryItemUpdateRequest {
 	image_url?: string | null;
 	position?: Position;
 }
+
+// =============================================================================
+// Review types
+// =============================================================================
+
+export interface ReviewRecordCreate {
+	memory_item_id: string;
+	quality: number;
+	response_time_ms: number;
+}
+
+export interface ReviewRecordResponse {
+	id: string;
+	session_id: string;
+	memory_item_id: string;
+	quality: number;
+	response_time_ms: number;
+	reviewed_at: string;
+}
+
+export interface RoomStatsResponse {
+	total_items: number;
+	reviewed_items: number;
+	mastered_items: number;
+	learning_items: number;
+	new_items: number;
+	average_ease_factor: number | null;
+	total_reviews: number;
+	average_quality: number | null;
+	reviews_today: number;
+}
+
+export interface DailyStatsEntry {
+	date: string;
+	review_count: number;
+	average_quality: number | null;
+	correct_rate: number | null;
+}
+
+export interface DailyStatsResponse {
+	entries: DailyStatsEntry[];
+}
+
+export interface ForgettingCurvePoint {
+	days_since_review: number;
+	retention: number;
+}
+
+export interface ForgettingCurveItem {
+	item_id: string;
+	content: string;
+	stability: number;
+	curve: ForgettingCurvePoint[];
+}
+
+export interface ForgettingCurveResponse {
+	items: ForgettingCurveItem[];
+}
