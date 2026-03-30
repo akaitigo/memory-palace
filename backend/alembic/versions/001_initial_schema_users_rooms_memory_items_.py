@@ -42,14 +42,13 @@ def upgrade() -> None:
     op.create_table(
         "rooms",
         sa.Column("id", sa.Uuid(), nullable=False, default=sa.text("gen_random_uuid()")),
-        sa.Column("owner_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("owner_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("layout_data", postgresql.JSONB(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.ForeignKeyConstraint(["owner_id"], ["users.id"], ondelete="CASCADE"),
     )
     op.create_index("ix_rooms_owner_id", "rooms", ["owner_id"])
 
