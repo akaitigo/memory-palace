@@ -69,12 +69,11 @@ def list_rooms(db: Session = Depends(get_db)) -> list[Room]:
 def create_room(body: RoomCreate, db: Session = Depends(get_db)) -> Room:
     """Create a new room.
 
-    Note: MVP uses a hardcoded owner_id. Auth will be added later.
+    Note: MVP does not implement auth. ``owner_id`` can be supplied in the
+    request body; if omitted a random UUID is generated.
     """
-    # MVP: use a deterministic dummy owner id until auth is implemented
-    dummy_owner_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     room = Room(
-        owner_id=dummy_owner_id,
+        owner_id=body.owner_id or uuid.uuid4(),
         name=body.name,
         description=body.description,
         layout_data=body.layout_data,

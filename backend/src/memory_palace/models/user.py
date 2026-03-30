@@ -4,15 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from memory_palace.database import Base
-
-if TYPE_CHECKING:
-    from memory_palace.models.room import Room
 
 
 class User(Base):
@@ -51,13 +47,6 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
-    )
-
-    # Relationships
-    rooms: Mapped[list[Room]] = relationship(
-        "Room",
-        back_populates="owner",
-        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

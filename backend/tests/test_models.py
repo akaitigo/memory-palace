@@ -137,23 +137,11 @@ class TestUserModel:
 class TestRoomModel:
     """Tests for the Room model."""
 
-    @pytest.fixture
-    def user(self, db_session: Session):
-        """Create a user for room tests."""
-        user = User(
-            username="roomowner",
-            email="owner@example.com",
-            password_hash="hash",
-        )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-        return user
-
-    def test_create_room(self, db_session: Session, user: User):
+    def test_create_room(self, db_session: Session):
         """Room can be created with required fields."""
+        owner_id = uuid.uuid4()
         room = Room(
-            owner_id=user.id,
+            owner_id=owner_id,
             name="Test Room",
             description="A test room",
         )
@@ -164,16 +152,25 @@ class TestRoomModel:
         assert room.id is not None
         assert room.name == "Test Room"
         assert room.description == "A test room"
-        assert room.owner_id == user.id
+        assert room.owner_id == owner_id
 
-    def test_room_with_layout_data(self, db_session: Session, user: User):
+    def test_create_room_without_owner(self, db_session: Session):
+        """Room can be created without owner_id (nullable)."""
+        room = Room(name="No Owner Room")
+        db_session.add(room)
+        db_session.commit()
+        db_session.refresh(room)
+
+        assert room.id is not None
+        assert room.owner_id is None
+
+    def test_room_with_layout_data(self, db_session: Session):
         """Room can store JSONB layout data."""
         layout = {
             "floor": {"width": 10, "height": 10},
             "walls": [{"x": 0, "y": 0, "z": 0, "width": 10, "height": 3}],
         }
         room = Room(
-            owner_id=user.id,
             name="Layout Room",
             layout_data=layout,
         )
@@ -184,32 +181,9 @@ class TestRoomModel:
         assert room.layout_data is not None
         assert room.layout_data["floor"]["width"] == 10
 
-    def test_room_owner_relationship(self, db_session: Session, user: User):
-        """Room has a relationship to its owner."""
-        room = Room(
-            owner_id=user.id,
-            name="Relationship Room",
-        )
-        db_session.add(room)
-        db_session.commit()
-        db_session.refresh(room)
-
-        assert room.owner is not None
-        assert room.owner.username == "roomowner"
-
-    def test_user_rooms_relationship(self, db_session: Session, user: User):
-        """User has a list of owned rooms."""
-        room1 = Room(owner_id=user.id, name="Room 1")
-        room2 = Room(owner_id=user.id, name="Room 2")
-        db_session.add_all([room1, room2])
-        db_session.commit()
-        db_session.refresh(user)
-
-        assert len(user.rooms) == 2
-
-    def test_update_room(self, db_session: Session, user: User):
+    def test_update_room(self, db_session: Session):
         """Room fields can be updated."""
-        room = Room(owner_id=user.id, name="Original")
+        room = Room(name="Original")
         db_session.add(room)
         db_session.commit()
 
@@ -219,9 +193,9 @@ class TestRoomModel:
 
         assert room.name == "Updated"
 
-    def test_delete_room(self, db_session: Session, user: User):
+    def test_delete_room(self, db_session: Session):
         """Room can be deleted."""
-        room = Room(owner_id=user.id, name="To Delete")
+        room = Room(name="To Delete")
         db_session.add(room)
         db_session.commit()
 
@@ -231,9 +205,9 @@ class TestRoomModel:
         found = db_session.query(Room).filter_by(name="To Delete").first()
         assert found is None
 
-    def test_room_repr(self, db_session: Session, user: User):
+    def test_room_repr(self, db_session: Session):
         """Room repr includes id and name."""
-        room = Room(owner_id=user.id, name="ReprRoom")
+        room = Room(name="ReprRoom")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)
@@ -253,17 +227,8 @@ class TestMemoryItemModel:
 
     @pytest.fixture
     def room(self, db_session: Session):
-        """Create a user and room for memory item tests."""
-        user = User(
-            username="itemowner",
-            email="item@example.com",
-            password_hash="hash",
-        )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="Item Room")
+        """Create a room for memory item tests."""
+        room = Room(name="Item Room")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)
@@ -392,17 +357,8 @@ class TestReviewSessionModel:
 
     @pytest.fixture
     def room(self, db_session: Session):
-        """Create a user and room for review session tests."""
-        user = User(
-            username="reviewowner",
-            email="review@example.com",
-            password_hash="hash",
-        )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="Review Room")
+        """Create a room for review session tests."""
+        room = Room(name="Review Room")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)
@@ -475,17 +431,8 @@ class TestReviewRecordModel:
 
     @pytest.fixture
     def review_context(self, db_session: Session):
-        """Create user, room, item, and session for review record tests."""
-        user = User(
-            username="recordowner",
-            email="record@example.com",
-            password_hash="hash",
-        )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="Record Room")
+        """Create room, item, and session for review record tests."""
+        room = Room(name="Record Room")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)
@@ -621,30 +568,9 @@ class TestReviewRecordModel:
 class TestCascadeDelete:
     """Tests for cascade delete behavior."""
 
-    def test_delete_user_cascades_to_rooms(self, db_session: Session):
-        """Deleting a user also deletes their rooms."""
-        user = User(username="cascade_user", email="cascade@example.com", password_hash="hash")
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="Cascade Room")
-        db_session.add(room)
-        db_session.commit()
-
-        db_session.delete(user)
-        db_session.commit()
-
-        assert db_session.query(Room).count() == 0
-
     def test_delete_room_cascades_to_items(self, db_session: Session):
         """Deleting a room also deletes its memory items."""
-        user = User(username="cascade_room", email="cascade_room@example.com", password_hash="hash")
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="To Delete Room")
+        room = Room(name="To Delete Room")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)
@@ -660,12 +586,7 @@ class TestCascadeDelete:
 
     def test_delete_session_cascades_to_records(self, db_session: Session):
         """Deleting a review session also deletes its records."""
-        user = User(username="cascade_session", email="cascade_session@example.com", password_hash="hash")
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
-
-        room = Room(owner_id=user.id, name="Cascade Session Room")
+        room = Room(name="Cascade Session Room")
         db_session.add(room)
         db_session.commit()
         db_session.refresh(room)

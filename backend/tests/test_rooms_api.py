@@ -12,7 +12,6 @@ from sqlalchemy.orm import sessionmaker
 
 from memory_palace.database import Base, get_db
 from memory_palace.main import app
-from memory_palace.models.user import User
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -32,20 +31,6 @@ _TestSessionLocal = sessionmaker(bind=_engine)
 def _setup_db():
     """Create all tables before each test and drop after."""
     Base.metadata.create_all(_engine)
-
-    # Create dummy user required by Room.owner_id FK
-    session = _TestSessionLocal()
-    existing = session.query(User).filter_by(id=uuid.UUID("00000000-0000-0000-0000-000000000001")).first()
-    if not existing:
-        dummy_user = User(
-            id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
-            username="testuser",
-            email="test@example.com",
-            password_hash="hash",
-        )
-        session.add(dummy_user)
-        session.commit()
-    session.close()
 
     yield
 

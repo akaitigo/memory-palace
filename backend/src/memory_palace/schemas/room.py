@@ -26,6 +26,10 @@ class RoomCreate(BaseModel):
         default=None,
         description="3D layout data (JSON)",
     )
+    owner_id: uuid.UUID | None = Field(
+        default=None,
+        description="Owner user ID. If omitted a new UUID is generated (MVP: no auth).",
+    )
 
 
 class RoomUpdate(BaseModel):
@@ -53,7 +57,7 @@ class RoomResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    owner_id: uuid.UUID
+    owner_id: uuid.UUID | None
     name: str
     description: str | None
     layout_data: dict[str, Any] | None
