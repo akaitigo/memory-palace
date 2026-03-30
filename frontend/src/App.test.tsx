@@ -13,6 +13,28 @@ vi.mock("@/lib/api", () => ({
 	itemApi: {
 		list: vi.fn(),
 	},
+	reviewApi: {
+		getQueue: vi.fn(),
+		recordReview: vi.fn(),
+		getStats: vi.fn(),
+		getDailyStats: vi.fn(),
+		getForgettingCurve: vi.fn(),
+	},
+}));
+
+// Mock recharts
+vi.mock("recharts", () => ({
+	ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+	LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+	PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+	Line: () => <div />,
+	Pie: () => <div />,
+	Cell: () => <div />,
+	XAxis: () => <div />,
+	YAxis: () => <div />,
+	CartesianGrid: () => <div />,
+	Tooltip: () => <div />,
+	Legend: () => <div />,
 }));
 
 // Import mocked module

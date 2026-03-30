@@ -7,6 +7,11 @@ from memory_palace.schemas.memory_item import (
     PositionSchema,
 )
 from memory_palace.schemas.review import (
+    DailyStatsEntry,
+    DailyStatsResponse,
+    ForgettingCurveItem,
+    ForgettingCurvePoint,
+    ForgettingCurveResponse,
     MemoryItemSM2Response,
     ReviewRecordCreate,
     ReviewRecordResponse,
@@ -17,6 +22,11 @@ from memory_palace.schemas.room import RoomCreate, RoomResponse, RoomUpdate
 from memory_palace.schemas.user import UserCreate, UserResponse
 
 __all__ = [
+    "DailyStatsEntry",
+    "DailyStatsResponse",
+    "ForgettingCurveItem",
+    "ForgettingCurvePoint",
+    "ForgettingCurveResponse",
     "MemoryItemCreate",
     "MemoryItemResponse",
     "MemoryItemSM2Response",

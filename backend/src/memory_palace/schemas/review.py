@@ -80,3 +80,40 @@ class RoomStatsResponse(BaseModel):
     total_reviews: int = Field(..., description="Total review records")
     average_quality: float | None = Field(None, description="Average quality score")
     reviews_today: int = Field(..., description="Reviews completed today")
+
+
+class DailyStatsEntry(BaseModel):
+    """A single day's review statistics."""
+
+    date: str = Field(..., description="Date string (YYYY-MM-DD)")
+    review_count: int = Field(..., description="Number of reviews on this day")
+    average_quality: float | None = Field(None, description="Average quality score for the day")
+    correct_rate: float | None = Field(None, description="Percentage of reviews with quality >= 3")
+
+
+class DailyStatsResponse(BaseModel):
+    """Daily review statistics for chart rendering."""
+
+    entries: list[DailyStatsEntry] = Field(default_factory=list, description="Daily stats entries")
+
+
+class ForgettingCurvePoint(BaseModel):
+    """A point on the forgetting curve."""
+
+    days_since_review: float = Field(..., description="Days since last review")
+    retention: float = Field(..., description="Predicted retention probability (0-1)")
+
+
+class ForgettingCurveItem(BaseModel):
+    """Forgetting curve data for a single memory item."""
+
+    item_id: uuid.UUID = Field(..., description="Memory item ID")
+    content: str = Field(..., description="Memory item content (truncated)")
+    stability: float = Field(..., description="Stability (interval * ease_factor)")
+    curve: list[ForgettingCurvePoint] = Field(default_factory=list, description="Forgetting curve points")
+
+
+class ForgettingCurveResponse(BaseModel):
+    """Forgetting curve data for a room's items."""
+
+    items: list[ForgettingCurveItem] = Field(default_factory=list, description="Per-item forgetting curves")
