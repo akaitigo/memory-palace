@@ -1,0 +1,194 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError, itemApi, roomApi } from "./api";
+
+// Mock fetch globally
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+function mockResponse(body: unknown, status = 200): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		json: () => Promise.resolve(body),
+		text: () => Promise.resolve(JSON.stringify(body)),
+		headers: new Headers(),
+		redirected: false,
+		statusText: "OK",
+		type: "basic" as ResponseType,
+		url: "",
+		clone: () => mockResponse(body, status),
+		body: null,
+		bodyUsed: false,
+		arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+		blob: () => Promise.resolve(new Blob()),
+		formData: () => Promise.resolve(new FormData()),
+		bytes: () => Promise.resolve(new Uint8Array()),
+	};
+}
+
+function mockNoContentResponse(): Response {
+	return mockResponse(undefined, 204);
+}
+
+function mockErrorResponse(status: number, message: string): Response {
+	return {
+		...mockResponse(message, status),
+		ok: false,
+		status,
+		text: () => Promise.resolve(message),
+	};
+}
+
+beforeEach(() => {
+	mockFetch.mockReset();
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
+describe("roomApi", () => {
+	describe("list", () => {
+		it("fetches rooms from /api/rooms", async () => {
+			const rooms = [{ id: "1", name: "Room 1" }];
+			mockFetch.mockResolvedValueOnce(mockResponse(rooms));
+
+			const result = await roomApi.list();
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				"/api/rooms",
+				expect.objectContaining({ headers: expect.objectContaining({ "Content-Type": "application/json" }) }),
+			);
+			expect(result).toEqual(rooms);
+		});
+	});
+
+	describe("get", () => {
+		it("fetches a room by ID", async () => {
+			const room = { id: "1", name: "Test Room" };
+			mockFetch.mockResolvedValueOnce(mockResponse(room));
+
+			const result = await roomApi.get("1");
+			expect(result).toEqual(room);
+		});
+	});
+
+	describe("create", () => {
+		it("creates a room with POST", async () => {
+			const newRoom = { id: "1", name: "New Room" };
+			mockFetch.mockResolvedValueOnce(mockResponse(newRoom, 201));
+
+			const result = await roomApi.create({ name: "New Room" });
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				"/api/rooms",
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ name: "New Room" }),
+				}),
+			);
+			expect(result).toEqual(newRoom);
+		});
+	});
+
+	describe("update", () => {
+		it("updates a room with PATCH", async () => {
+			const updated = { id: "1", name: "Updated" };
+			mockFetch.mockResolvedValueOnce(mockResponse(updated));
+
+			const result = await roomApi.update("1", { name: "Updated" });
+			expect(result).toEqual(updated);
+		});
+	});
+
+	describe("delete", () => {
+		it("deletes a room", async () => {
+			mockFetch.mockResolvedValueOnce(mockNoContentResponse());
+
+			await roomApi.delete("1");
+
+			expect(mockFetch).toHaveBeenCalledWith("/api/rooms/1", expect.objectContaining({ method: "DELETE" }));
+		});
+	});
+});
+
+describe("itemApi", () => {
+	const roomId = "room-1";
+
+	describe("list", () => {
+		it("fetches items for a room", async () => {
+			const items = [{ id: "i1", content: "Test" }];
+			mockFetch.mockResolvedValueOnce(mockResponse(items));
+
+			const result = await itemApi.list(roomId);
+			expect(result).toEqual(items);
+		});
+	});
+
+	describe("create", () => {
+		it("creates an item with position", async () => {
+			const newItem = { id: "i1", content: "New item", position_x: 1, position_z: 2 };
+			mockFetch.mockResolvedValueOnce(mockResponse(newItem, 201));
+
+			const result = await itemApi.create(roomId, {
+				content: "New item",
+				position: { x: 1, y: 0, z: 2 },
+			});
+
+			expect(result).toEqual(newItem);
+			expect(mockFetch).toHaveBeenCalledWith(
+				`/api/rooms/${roomId}/items`,
+				expect.objectContaining({
+					method: "POST",
+					body: expect.stringContaining("New item"),
+				}),
+			);
+		});
+	});
+
+	describe("update", () => {
+		it("updates an item", async () => {
+			const updated = { id: "i1", content: "Updated" };
+			mockFetch.mockResolvedValueOnce(mockResponse(updated));
+
+			const result = await itemApi.update(roomId, "i1", { content: "Updated" });
+			expect(result).toEqual(updated);
+		});
+	});
+
+	describe("delete", () => {
+		it("deletes an item", async () => {
+			mockFetch.mockResolvedValueOnce(mockNoContentResponse());
+
+			await itemApi.delete(roomId, "i1");
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				`/api/rooms/${roomId}/items/i1`,
+				expect.objectContaining({ method: "DELETE" }),
+			);
+		});
+	});
+});
+
+describe("ApiError", () => {
+	it("is thrown on non-OK responses", async () => {
+		mockFetch.mockResolvedValueOnce(mockErrorResponse(404, "Not found"));
+
+		await expect(roomApi.get("nonexistent")).rejects.toThrow(ApiError);
+	});
+
+	it("includes status code and message", async () => {
+		mockFetch.mockResolvedValueOnce(mockErrorResponse(500, "Internal error"));
+
+		try {
+			await roomApi.get("err");
+			expect.unreachable("Should have thrown");
+		} catch (err) {
+			expect(err).toBeInstanceOf(ApiError);
+			if (err instanceof ApiError) {
+				expect(err.status).toBe(500);
+				expect(err.message).toContain("Internal error");
+			}
+		}
+	});
+});

@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from memory_palace.api.health import router as health_router
+from memory_palace.api.reviews import router as reviews_router
+from memory_palace.api.rooms import router as rooms_router
 
 
 def create_app() -> FastAPI:
@@ -30,6 +32,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(rooms_router)
+    app.include_router(reviews_router)
 
     return app
 
