@@ -28,14 +28,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Format check
-        run: npx biome format --check .
-
       - name: Lint (oxlint)
         run: npx oxlint .
 
-      - name: Lint (biome)
-        run: npx biome check .
+      - name: Lint + Format (biome)
+        run: npx biome ci .
 
       - name: Type check
         run: npx tsc --noEmit
