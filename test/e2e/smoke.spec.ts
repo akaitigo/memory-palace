@@ -32,12 +32,8 @@ test.describe("スモークテスト", () => {
   test("ナビゲーションが動作する", async ({ page }) => {
     await page.goto("/");
 
-    // TODO: プロジェクト固有のナビゲーション要素に置き換える
-    // 例: メニューリンクをクリックして遷移を確認
-    // const nav = page.getByRole("navigation");
-    // await expect(nav).toBeVisible();
-    // await nav.getByRole("link", { name: "About" }).click();
-    // await expect(page).toHaveURL(/.*about/);
+    // See: https://github.com/akaitigo/memory-palace/issues (navigation e2e)
+    // ナビゲーション要素が実装されたらテストを追加する
   });
 });
 
