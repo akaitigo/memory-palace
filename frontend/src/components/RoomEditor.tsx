@@ -5,14 +5,13 @@
  * Handles room rendering, item placement, selection, and CRUD operations.
  */
 
-import { itemApi, roomApi } from "@/lib/api";
-import { FirstPersonControls } from "@/lib/three/FirstPersonControls";
-import type { ItemManagerCallbacks } from "@/lib/three/ItemManager";
-import { ItemManager } from "@/lib/three/ItemManager";
-import { RoomScene } from "@/lib/three/RoomScene";
-import type { MemoryItem, Room } from "@/types/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { itemApi, roomApi } from "@/lib/api";
+import { FirstPersonControls } from "@/lib/three/FirstPersonControls";
+import { ItemManager, type ItemManagerCallbacks } from "@/lib/three/ItemManager";
+import { RoomScene } from "@/lib/three/RoomScene";
+import type { MemoryItem, Room } from "@/types/api";
 
 /** Props for the RoomEditor component */
 export interface RoomEditorProps {
@@ -51,6 +50,7 @@ export function RoomEditor({ roomId }: RoomEditorProps): React.JSX.Element {
 	const itemManagerRef = useRef<ItemManager | null>(null);
 
 	const [state, setState] = useState<EditorState>(INITIAL_STATE);
+	const handleItemPlacedRef = useRef<((position: THREE.Vector3) => Promise<void>) | null>(null);
 
 	// Partial state updater
 	const updateState = useCallback((partial: Partial<EditorState>) => {
@@ -98,7 +98,7 @@ export function RoomEditor({ roomId }: RoomEditorProps): React.JSX.Element {
 					// Will be handled in placement handler
 					return { ...prev, isPlacementMode: false };
 				});
-				handleItemPlaced(position);
+				handleItemPlacedRef.current?.(position);
 			},
 			onItemSelected: (itemId: string) => {
 				setState((prev) => {
@@ -181,32 +181,36 @@ export function RoomEditor({ roomId }: RoomEditorProps): React.JSX.Element {
 	// Item CRUD handlers
 	// =========================================================================
 
-	const handleItemPlaced = async (position: THREE.Vector3): Promise<void> => {
-		const content = state.newItemContent.trim();
-		if (content.length === 0 || content.length > 500) return;
+	const handleItemPlaced = useCallback(
+		async (position: THREE.Vector3): Promise<void> => {
+			const content = state.newItemContent.trim();
+			if (content.length === 0 || content.length > 500) return;
 
-		try {
-			const newItem = await itemApi.create(roomId, {
-				content,
-				position: { x: position.x, y: position.y, z: position.z },
-			});
+			try {
+				const newItem = await itemApi.create(roomId, {
+					content,
+					position: { x: position.x, y: position.y, z: position.z },
+				});
 
-			itemManagerRef.current?.addItem(
-				newItem.id,
-				newItem.content,
-				new THREE.Vector3(newItem.position_x, 0, newItem.position_z),
-			);
+				itemManagerRef.current?.addItem(
+					newItem.id,
+					newItem.content,
+					new THREE.Vector3(newItem.position_x, 0, newItem.position_z),
+				);
 
-			updateState({
-				items: [...state.items, newItem],
-				newItemContent: "",
-				isPlacementMode: false,
-			});
-		} catch (err) {
-			const message = err instanceof Error ? err.message : "Failed to create item";
-			updateState({ error: message });
-		}
-	};
+				updateState({
+					items: [...state.items, newItem],
+					newItemContent: "",
+					isPlacementMode: false,
+				});
+			} catch (err) {
+				const message = err instanceof Error ? err.message : "Failed to create item";
+				updateState({ error: message });
+			}
+		},
+		[roomId, state.newItemContent, state.items, updateState],
+	);
+	handleItemPlacedRef.current = handleItemPlaced;
 
 	const handleDeleteItem = async (): Promise<void> => {
 		if (!state.selectedItemId) return;

@@ -51,7 +51,6 @@
 		"no-import-assign": "error",
 		"no-inner-declarations": "error",
 		"no-invalid-regexp": "error",
-		"no-new-symbol": "error",
 		"no-obj-calls": "error",
 		"no-prototype-builtins": "error",
 		"no-redeclare": "error",
