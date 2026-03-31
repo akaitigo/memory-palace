@@ -1,5 +1,5 @@
-import type { MemoryItem, Room } from "@/types/api";
 import { describe, expect, it } from "vitest";
+import type { MemoryItem, Room } from "@/types/api";
 import { deserializeRoom, exportRoomJSON, parseRoomJSON, serializeRoom } from "./roomSerializer";
 
 const mockRoom: Room = {

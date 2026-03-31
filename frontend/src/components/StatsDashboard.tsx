@@ -5,8 +5,6 @@
  * and forgetting curve visualization using Recharts.
  */
 
-import { reviewApi } from "@/lib/api";
-import type { DailyStatsEntry, ForgettingCurveItem, RoomStatsResponse } from "@/types/api";
 import { useCallback, useEffect, useState } from "react";
 import {
 	CartesianGrid,
@@ -21,6 +19,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { reviewApi } from "@/lib/api";
+import type { DailyStatsEntry, ForgettingCurveItem, RoomStatsResponse } from "@/types/api";
 
 export interface StatsDashboardProps {
 	roomId: string;
