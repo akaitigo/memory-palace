@@ -47,7 +47,6 @@ pip install -e ".[dev]"
 
 ```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/memory_palace
-JWT_SECRET=your-secret-key
 CORS_ORIGINS=http://localhost:5173
 ```
 
@@ -82,6 +81,8 @@ backend/   — Python + FastAPI (REST API + SM-2 スケジューリング)
 
 ## 注意事項
 
+> **MVP版では認証なし** — 全エンドポイントが認証不要でアクセスできます。
+>
 > **本番利用前に必要な対応:**
 > - ユーザー認証の実装（JWT / OAuth）
 > - HTTPS の設定

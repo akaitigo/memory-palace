@@ -47,14 +47,18 @@ def _init_engine() -> None:
 def get_engine() -> Engine:
     """Return the shared engine, initialising on first call."""
     _init_engine()
-    assert _engine is not None
+    if _engine is None:
+        msg = "Database engine failed to initialise"
+        raise RuntimeError(msg)
     return _engine
 
 
 def get_session_factory() -> sessionmaker[Session]:
     """Return the shared session factory, initialising on first call."""
     _init_engine()
-    assert _SessionLocal is not None
+    if _SessionLocal is None:
+        msg = "Session factory failed to initialise"
+        raise RuntimeError(msg)
     return _SessionLocal
 
 
