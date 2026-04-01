@@ -19,7 +19,6 @@ from memory_palace.schemas.review import (
     RoomStatsResponse,
 )
 from memory_palace.schemas.room import RoomCreate, RoomResponse, RoomUpdate
-from memory_palace.schemas.user import UserCreate, UserResponse
 
 __all__ = [
     "DailyStatsEntry",
@@ -39,6 +38,4 @@ __all__ = [
     "RoomResponse",
     "RoomStatsResponse",
     "RoomUpdate",
-    "UserCreate",
-    "UserResponse",
 ]

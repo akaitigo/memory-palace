@@ -19,62 +19,7 @@ from memory_palace.schemas import (
     RoomCreate,
     RoomResponse,
     RoomUpdate,
-    UserCreate,
-    UserResponse,
 )
-
-# =============================================================================
-# UserCreate validation tests
-# =============================================================================
-
-
-class TestUserCreate:
-    """Tests for UserCreate schema validation."""
-
-    def test_valid_user_create(self):
-        """Valid user creation data passes validation."""
-        user = UserCreate(username="testuser", email="test@example.com", password="securepass")
-        assert user.username == "testuser"
-        assert user.email == "test@example.com"
-
-    def test_username_too_long(self):
-        """Username exceeding 100 characters is rejected."""
-        with pytest.raises(ValidationError):
-            UserCreate(username="a" * 101, email="test@example.com", password="securepass")
-
-    def test_username_empty(self):
-        """Empty username is rejected."""
-        with pytest.raises(ValidationError):
-            UserCreate(username="", email="test@example.com", password="securepass")
-
-    def test_password_too_short(self):
-        """Password shorter than 8 characters is rejected."""
-        with pytest.raises(ValidationError):
-            UserCreate(username="testuser", email="test@example.com", password="short")
-
-    def test_password_too_long(self):
-        """Password exceeding 128 characters is rejected."""
-        with pytest.raises(ValidationError):
-            UserCreate(username="testuser", email="test@example.com", password="a" * 129)
-
-
-class TestUserResponse:
-    """Tests for UserResponse schema."""
-
-    def test_user_response_from_dict(self):
-        """UserResponse can be created from a dict."""
-        now = datetime.now(tz=UTC)
-        user_id = uuid.uuid4()
-        response = UserResponse(
-            id=user_id,
-            username="testuser",
-            email="test@example.com",
-            created_at=now,
-            updated_at=now,
-        )
-        assert response.id == user_id
-        assert response.username == "testuser"
-
 
 # =============================================================================
 # RoomCreate validation tests
