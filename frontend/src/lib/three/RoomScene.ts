@@ -162,7 +162,7 @@ export class RoomScene {
 	dispose(): void {
 		this.stop();
 		this.scene.traverse((object) => {
-			if (object instanceof THREE.Mesh) {
+			if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
 				object.geometry.dispose();
 				const material = object.material;
 				if (Array.isArray(material)) {

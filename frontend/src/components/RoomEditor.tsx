@@ -51,6 +51,7 @@ export function RoomEditor({ roomId }: RoomEditorProps): React.JSX.Element {
 
 	const [state, setState] = useState<EditorState>(INITIAL_STATE);
 	const handleItemPlacedRef = useRef<((position: THREE.Vector3) => Promise<void>) | null>(null);
+	const prevPointerLockedRef = useRef(false);
 
 	// Partial state updater
 	const updateState = useCallback((partial: Partial<EditorState>) => {
@@ -125,7 +126,11 @@ export function RoomEditor({ roomId }: RoomEditorProps): React.JSX.Element {
 		// Start render loop
 		roomScene.start(() => {
 			controls.update();
-			updateState({ isPointerLocked: controls.getIsLocked() });
+			const isLocked = controls.getIsLocked();
+			if (isLocked !== prevPointerLockedRef.current) {
+				prevPointerLockedRef.current = isLocked;
+				updateState({ isPointerLocked: isLocked });
+			}
 		});
 
 		// Handle resize
