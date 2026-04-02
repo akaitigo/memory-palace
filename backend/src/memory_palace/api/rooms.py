@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from memory_palace.database import get_db
@@ -56,13 +56,21 @@ def _get_item_or_404(db: Session, item_id: uuid.UUID, room_id: uuid.UUID) -> Mem
 # =============================================================================
 
 
+_DEFAULT_LIMIT = 100
+_MAX_LIMIT = 500
+
+
 @router.get("", response_model=list[RoomResponse])
-def list_rooms(db: Session = Depends(get_db)) -> list[Room]:
-    """List all rooms.
+def list_rooms(
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT, description="Maximum number of rooms to return"),
+    offset: int = Query(default=0, ge=0, description="Number of rooms to skip"),
+    db: Session = Depends(get_db),
+) -> list[Room]:
+    """List rooms with pagination.
 
     Note: MVP does not implement auth. Owner filtering will be added later.
     """
-    return list(db.execute(select(Room).order_by(Room.created_at.desc())).scalars().all())
+    return list(db.execute(select(Room).order_by(Room.created_at.desc()).limit(limit).offset(offset)).scalars().all())
 
 
 @router.post("", response_model=RoomResponse, status_code=status.HTTP_201_CREATED)
@@ -116,11 +124,22 @@ def delete_room(room_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
 
 
 @router.get("/{room_id}/items", response_model=list[MemoryItemResponse])
-def list_items(room_id: uuid.UUID, db: Session = Depends(get_db)) -> list[MemoryItem]:
-    """List all memory items in a room."""
+def list_items(
+    room_id: uuid.UUID,
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT, description="Maximum number of items to return"),
+    offset: int = Query(default=0, ge=0, description="Number of items to skip"),
+    db: Session = Depends(get_db),
+) -> list[MemoryItem]:
+    """List memory items in a room with pagination."""
     _get_room_or_404(db, room_id)
     return list(
-        db.execute(select(MemoryItem).where(MemoryItem.room_id == room_id).order_by(MemoryItem.created_at))
+        db.execute(
+            select(MemoryItem)
+            .where(MemoryItem.room_id == room_id)
+            .order_by(MemoryItem.created_at)
+            .limit(limit)
+            .offset(offset)
+        )
         .scalars()
         .all()
     )

@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
+from sqlalchemy.orm.exc import StaleDataError
 
 from memory_palace.models.memory_item import MemoryItem
 from memory_palace.models.review_record import ReviewRecord
@@ -41,6 +42,9 @@ def _get_scheduling_strategy() -> SchedulingStrategy:
     return SM2Strategy()
 
 
+_REVIEW_QUEUE_MAX_ITEMS = 200
+
+
 def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
     """Get memory items due for review in a room.
 
@@ -49,13 +53,14 @@ def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
     - Its next review date (last_reviewed_at + interval days) is today or earlier.
 
     Items are sorted by urgency: never-reviewed first, then by due date ascending.
+    Returns at most 200 items.
 
     Args:
         db: Database session.
         room_id: Room UUID to get queue for.
 
     Returns:
-        List of MemoryItem objects due for review.
+        List of MemoryItem objects due for review (max 200).
     """
     now = datetime.now(tz=UTC)
 
@@ -84,7 +89,7 @@ def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
         return (1, reviewed_at + timedelta(days=item.interval))
 
     queue.sort(key=sort_key)
-    return queue
+    return queue[:_REVIEW_QUEUE_MAX_ITEMS]
 
 
 def record_review(
@@ -164,7 +169,14 @@ def record_review(
         response_time_ms=response_time_ms,
     )
     db.add(review_record)
-    db.commit()
+
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        msg = f"MemoryItem {memory_item_id} was modified concurrently. Please retry."
+        raise ValueError(msg) from None
+
     db.refresh(review_record)
 
     return review_record

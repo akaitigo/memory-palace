@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -91,13 +91,22 @@ class MemoryItem(Base):
     last_reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+        index=True,
         doc="Timestamp of the last review",
+    )
+
+    version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        doc="Optimistic lock version counter",
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+        index=True,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -116,6 +125,8 @@ class MemoryItem(Base):
         back_populates="memory_item",
         cascade="all, delete-orphan",
     )
+
+    __mapper_args__: ClassVar[dict[str, Any]] = {"version_id_col": version}
 
     def __repr__(self) -> str:
         return f"<MemoryItem(id={self.id}, content={self.content[:30]!r}...)>"

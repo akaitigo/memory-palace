@@ -63,6 +63,7 @@ class ReviewRecord(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+        index=True,
     )
 
     # Relationships
