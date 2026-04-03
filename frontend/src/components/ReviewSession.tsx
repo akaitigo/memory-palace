@@ -25,6 +25,7 @@ interface ReviewState {
 	startTime: number;
 	completed: boolean;
 	results: Array<{ itemId: string; quality: number }>;
+	isSubmitting: boolean;
 }
 
 const QUALITY_LABELS: Record<number, string> = {
@@ -46,6 +47,7 @@ export function ReviewSession({ roomId, onComplete, onBack }: ReviewSessionProps
 		startTime: Date.now(),
 		completed: false,
 		results: [],
+		isSubmitting: false,
 	});
 
 	const startTimeRef = useRef(Date.now());
@@ -79,8 +81,9 @@ export function ReviewSession({ roomId, onComplete, onBack }: ReviewSessionProps
 	};
 
 	const handleQualitySelect = async (quality: number): Promise<void> => {
-		if (!currentItem) return;
+		if (!currentItem || state.isSubmitting) return;
 
+		setState((prev) => ({ ...prev, isSubmitting: true }));
 		const responseTimeMs = Math.min(Date.now() - startTimeRef.current, 300000);
 
 		try {
@@ -100,12 +103,13 @@ export function ReviewSession({ roomId, onComplete, onBack }: ReviewSessionProps
 				currentIndex: nextIndex,
 				showContent: false,
 				completed: isComplete,
+				isSubmitting: false,
 			}));
 
 			startTimeRef.current = Date.now();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Failed to record review";
-			setState((prev) => ({ ...prev, error: message }));
+			setState((prev) => ({ ...prev, error: message, isSubmitting: false }));
 		}
 	};
 
@@ -233,10 +237,12 @@ export function ReviewSession({ roomId, onComplete, onBack }: ReviewSessionProps
 										key={q}
 										type="button"
 										onClick={() => handleQualitySelect(q)}
+										disabled={state.isSubmitting}
 										style={{
 											...styles.qualityButton,
 											backgroundColor: q >= 3 ? "#1a4a2e" : "#4a1a1a",
 											borderColor: q >= 3 ? "#2a8a4a" : "#8a2a2a",
+											opacity: state.isSubmitting ? 0.5 : 1,
 										}}
 										data-testid={`quality-button-${q}`}
 									>

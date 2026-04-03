@@ -82,7 +82,7 @@ export function StatsDashboard({ roomId, onBack }: StatsDashboardProps): React.J
 	}, [loadData, state.dateRange]);
 
 	const handleDateRangeChange = (days: number): void => {
-		loadData(days);
+		setState((prev) => ({ ...prev, dateRange: days }));
 	};
 
 	if (state.loading) {

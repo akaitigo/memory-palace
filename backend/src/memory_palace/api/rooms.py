@@ -100,9 +100,13 @@ def get_room(room_id: uuid.UUID, db: Session = Depends(get_db)) -> Room:
 
 @router.patch("/{room_id}", response_model=RoomResponse)
 def update_room(room_id: uuid.UUID, body: RoomUpdate, db: Session = Depends(get_db)) -> Room:
-    """Update a room."""
+    """Update a room.
+
+    Only fields explicitly included in the request body are updated.
+    Null values are excluded to prevent accidentally clearing columns.
+    """
     room = _get_room_or_404(db, room_id)
-    update_data = body.model_dump(exclude_unset=True)
+    update_data = body.model_dump(exclude_unset=True, exclude_none=True)
     for key, value in update_data.items():
         setattr(room, key, value)
     db.commit()

@@ -81,9 +81,17 @@ def post_review(
             response_time_ms=body.response_time_ms,
         )
     except ValueError as e:
+        detail = str(e)
+        # StaleDataError (concurrent modification) is re-raised as ValueError
+        # from the service layer — surface it as 409 Conflict, not 404
+        if "concurrently" in detail.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=detail,
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=detail,
         ) from e
 
 

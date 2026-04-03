@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_MAX_DESCRIPTION_LENGTH = 100_000
+_MAX_LAYOUT_DATA_LENGTH = 100_000
+
+
+def _validate_layout_data_size(v: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Reject layout_data payloads that exceed the size limit when serialized."""
+    if v is not None and len(json.dumps(v)) > _MAX_LAYOUT_DATA_LENGTH:
+        msg = f"layout_data JSON must not exceed {_MAX_LAYOUT_DATA_LENGTH} characters"
+        raise ValueError(msg)
+    return v
 
 
 class RoomCreate(BaseModel):
@@ -18,18 +30,25 @@ class RoomCreate(BaseModel):
         max_length=100,
         description="Room name (1-100 characters)",
     )
-    description: str | None = Field(
-        default=None,
-        description="Room description",
-    )
+    description: Annotated[
+        str | None,
+        Field(
+            default=None, max_length=_MAX_DESCRIPTION_LENGTH, description="Room description (max 100 000 characters)"
+        ),
+    ]
     layout_data: dict[str, Any] | None = Field(
         default=None,
-        description="3D layout data (JSON)",
+        description="3D layout data (JSON, max 100 000 characters when serialized)",
     )
     owner_id: uuid.UUID | None = Field(
         default=None,
         description="Owner user ID. If omitted a new UUID is generated (MVP: no auth).",
     )
+
+    @field_validator("layout_data")
+    @classmethod
+    def check_layout_data_size(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _validate_layout_data_size(v)
 
 
 class RoomUpdate(BaseModel):
@@ -41,14 +60,21 @@ class RoomUpdate(BaseModel):
         max_length=100,
         description="Room name (1-100 characters)",
     )
-    description: str | None = Field(
-        default=None,
-        description="Room description",
-    )
+    description: Annotated[
+        str | None,
+        Field(
+            default=None, max_length=_MAX_DESCRIPTION_LENGTH, description="Room description (max 100 000 characters)"
+        ),
+    ]
     layout_data: dict[str, Any] | None = Field(
         default=None,
-        description="3D layout data (JSON)",
+        description="3D layout data (JSON, max 100 000 characters when serialized)",
     )
+
+    @field_validator("layout_data")
+    @classmethod
+    def check_layout_data_size(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _validate_layout_data_size(v)
 
 
 class RoomResponse(BaseModel):
