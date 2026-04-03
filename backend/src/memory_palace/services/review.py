@@ -6,6 +6,7 @@ import math
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -114,7 +115,7 @@ def record_review(
         The created ReviewRecord.
 
     Raises:
-        ValueError: If the memory item is not found in the specified room.
+        HTTPException: 404 if the memory item is not found; 409 on concurrent modification.
     """
     # Fetch the memory item
     item = db.execute(
@@ -125,8 +126,10 @@ def record_review(
     ).scalar_one_or_none()
 
     if item is None:
-        msg = f"MemoryItem {memory_item_id} not found in room {room_id}"
-        raise ValueError(msg)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"MemoryItem {memory_item_id} not found in room {room_id}",
+        )
 
     # Create or fetch review session
     if session_id is None:
@@ -174,8 +177,10 @@ def record_review(
         db.commit()
     except StaleDataError:
         db.rollback()
-        msg = f"MemoryItem {memory_item_id} was modified concurrently. Please retry."
-        raise ValueError(msg) from None
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"MemoryItem {memory_item_id} was modified concurrently. Please retry.",
+        ) from None
 
     db.refresh(review_record)
 

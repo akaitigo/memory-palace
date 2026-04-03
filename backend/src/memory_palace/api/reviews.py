@@ -72,27 +72,13 @@ def post_review(
 ) -> object:
     """Record a review result for a memory item."""
     _get_room_or_404(db, room_id)
-    try:
-        return record_review(
-            db=db,
-            room_id=room_id,
-            memory_item_id=body.memory_item_id,
-            quality=body.quality,
-            response_time_ms=body.response_time_ms,
-        )
-    except ValueError as e:
-        detail = str(e)
-        # StaleDataError (concurrent modification) is re-raised as ValueError
-        # from the service layer — surface it as 409 Conflict, not 404
-        if "concurrently" in detail.lower():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=detail,
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=detail,
-        ) from e
+    return record_review(
+        db=db,
+        room_id=room_id,
+        memory_item_id=body.memory_item_id,
+        quality=body.quality,
+        response_time_ms=body.response_time_ms,
+    )
 
 
 @router.get(
