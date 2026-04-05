@@ -1,5 +1,11 @@
 """Pydantic schemas (request/response DTOs) for Memory Palace API."""
 
+from memory_palace.schemas.auth import (
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
 from memory_palace.schemas.memory_item import (
     MemoryItemCreate,
     MemoryItemResponse,
@@ -26,11 +32,13 @@ __all__ = [
     "ForgettingCurveItem",
     "ForgettingCurvePoint",
     "ForgettingCurveResponse",
+    "LoginRequest",
     "MemoryItemCreate",
     "MemoryItemResponse",
     "MemoryItemSM2Response",
     "MemoryItemUpdate",
     "PositionSchema",
+    "RegisterRequest",
     "ReviewRecordCreate",
     "ReviewRecordResponse",
     "ReviewSessionResponse",
@@ -38,4 +46,6 @@ __all__ = [
     "RoomResponse",
     "RoomStatsResponse",
     "RoomUpdate",
+    "TokenResponse",
+    "UserResponse",
 ]

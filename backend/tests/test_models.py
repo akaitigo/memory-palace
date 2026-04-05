@@ -6,25 +6,11 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-from memory_palace.database import Base
 from memory_palace.models import MemoryItem, ReviewRecord, ReviewSession, Room, User
 
-
-@pytest.fixture
-def db_session():
-    """Create an in-memory SQLite database session for testing."""
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    session_factory = sessionmaker(bind=engine)
-    session = session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(engine)
+# Use the shared conftest fixtures: db_session, _setup_db
 
 
 # =============================================================================
@@ -38,8 +24,8 @@ class TestUserModel:
     def test_create_user(self, db_session: Session):
         """User can be created with required fields."""
         user = User(
-            username="testuser",
-            email="test@example.com",
+            username="modeluser",
+            email="modeluser@example.com",
             password_hash="hashed_password_123",
         )
         db_session.add(user)
@@ -47,8 +33,8 @@ class TestUserModel:
         db_session.refresh(user)
 
         assert user.id is not None
-        assert user.username == "testuser"
-        assert user.email == "test@example.com"
+        assert user.username == "modeluser"
+        assert user.email == "modeluser@example.com"
         assert user.password_hash == "hashed_password_123"
 
     def test_user_has_uuid_id(self, db_session: Session):

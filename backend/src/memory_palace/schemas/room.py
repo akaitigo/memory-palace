@@ -40,10 +40,6 @@ class RoomCreate(BaseModel):
         default=None,
         description="3D layout data (JSON, max 100 000 characters when serialized)",
     )
-    owner_id: uuid.UUID | None = Field(
-        default=None,
-        description="Owner user ID. If omitted a new UUID is generated (MVP: no auth).",
-    )
 
     @field_validator("layout_data")
     @classmethod

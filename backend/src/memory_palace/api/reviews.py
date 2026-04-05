@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from memory_palace.auth import get_current_user
 from memory_palace.database import get_db
 from memory_palace.models.room import Room
+from memory_palace.models.user import User
 from memory_palace.schemas.memory_item import MemoryItemResponse
 from memory_palace.schemas.review import (
     DailyStatsResponse,
@@ -26,15 +29,24 @@ from memory_palace.services.review import (
     record_review,
 )
 
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
 router = APIRouter(prefix="/api/rooms", tags=["reviews"])
 
 
-def _get_room_or_404(db: Session, room_id: uuid.UUID) -> Room:
-    """Retrieve a room by ID or raise 404."""
-    room = db.execute(select(Room).where(Room.id == room_id)).scalar_one_or_none()
+def _get_room_or_404(db: Session, room_id: uuid.UUID, owner_id: uuid.UUID) -> Room:
+    """Retrieve a room by ID, ensuring the owner matches.
+
+    Args:
+        db: Database session.
+        room_id: Room UUID.
+        owner_id: Expected owner UUID for authorization.
+
+    Returns:
+        The Room object.
+
+    Raises:
+        HTTPException: 404 if the room does not exist or does not belong to the owner.
+    """
+    room = db.execute(select(Room).where(Room.id == room_id, Room.owner_id == owner_id)).scalar_one_or_none()
     if room is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -51,10 +63,11 @@ def _get_room_or_404(db: Session, room_id: uuid.UUID) -> Room:
 )
 def get_review_queue_endpoint(
     room_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> list:
     """Get memory items due for review in a room."""
-    _get_room_or_404(db, room_id)
+    _get_room_or_404(db, room_id, current_user.id)
     return get_review_queue(db, room_id)
 
 
@@ -68,10 +81,11 @@ def get_review_queue_endpoint(
 def post_review(
     room_id: uuid.UUID,
     body: ReviewRecordCreate,
-    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> object:
     """Record a review result for a memory item."""
-    _get_room_or_404(db, room_id)
+    _get_room_or_404(db, room_id, current_user.id)
     return record_review(
         db=db,
         room_id=room_id,
@@ -89,10 +103,11 @@ def post_review(
 )
 def get_stats(
     room_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     """Get review statistics for a room."""
-    _get_room_or_404(db, room_id)
+    _get_room_or_404(db, room_id, current_user.id)
     return get_room_stats(db, room_id)
 
 
@@ -104,11 +119,12 @@ def get_stats(
 )
 def get_daily_stats_endpoint(
     room_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
     days: int = Query(default=30, ge=1, le=365, description="Number of days to look back (1-365)"),
-    db: Session = Depends(get_db),
 ) -> dict:
     """Get daily review statistics for a room."""
-    _get_room_or_404(db, room_id)
+    _get_room_or_404(db, room_id, current_user.id)
     return get_daily_stats(db, room_id, days)
 
 
@@ -120,8 +136,9 @@ def get_daily_stats_endpoint(
 )
 def get_forgetting_curve_endpoint(
     room_id: uuid.UUID,
-    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     """Get forgetting curve data for a room's items."""
-    _get_room_or_404(db, room_id)
+    _get_room_or_404(db, room_id, current_user.id)
     return get_forgetting_curves(db, room_id)

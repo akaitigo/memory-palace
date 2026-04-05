@@ -20,6 +20,12 @@ vi.mock("@/lib/api", () => ({
 		getDailyStats: vi.fn(),
 		getForgettingCurve: vi.fn(),
 	},
+	authApi: {
+		login: vi.fn(),
+		register: vi.fn(),
+		me: vi.fn(),
+	},
+	setOnUnauthorized: vi.fn(),
 }));
 
 // Mock recharts
@@ -35,6 +41,25 @@ vi.mock("recharts", () => ({
 	CartesianGrid: () => <div />,
 	Tooltip: () => <div />,
 	Legend: () => <div />,
+}));
+
+// Mock the auth context — provide an authenticated user by default for existing tests
+const mockLogout = vi.fn();
+
+// Stable user reference to avoid useEffect re-triggers on every render
+const MOCK_USER = { id: "user-1", username: "testuser", email: "test@example.com", created_at: "2026-01-01" };
+
+vi.mock("@/contexts/AuthContext", () => ({
+	useAuth: () => ({
+		user: MOCK_USER,
+		loading: false,
+		error: null,
+		login: vi.fn(),
+		register: vi.fn(),
+		logout: mockLogout,
+		clearError: vi.fn(),
+	}),
+	AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 // Import mocked module

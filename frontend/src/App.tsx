@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { LoginForm } from "@/components/LoginForm";
 import { ReviewSession } from "@/components/ReviewSession";
 import { RoomEditor } from "@/components/RoomEditor";
 import { StatsDashboard } from "@/components/StatsDashboard";
-import { roomApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { roomApi, setOnUnauthorized } from "@/lib/api";
 import type { Room, RoomCreateRequest } from "@/types/api";
 
 type View =
@@ -12,6 +14,7 @@ type View =
 	| { type: "stats"; roomId: string };
 
 export function App(): React.JSX.Element {
+	const { user, loading: authLoading, logout } = useAuth();
 	const [view, setView] = useState<View>({ type: "list" });
 	const [rooms, setRooms] = useState<Room[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -31,14 +34,19 @@ export function App(): React.JSX.Element {
 		}
 	}, []);
 
+	// Register 401 handler — triggers logout on expired/invalid token
 	useEffect(() => {
-		loadRooms();
-	}, [loadRooms]);
+		setOnUnauthorized(logout);
+		return () => setOnUnauthorized(null);
+	}, [logout]);
 
-	const handleCreateRoom = async (): Promise<void> => {
-		const name = newRoomName.trim();
-		if (name.length === 0 || name.length > 100) return;
+	useEffect(() => {
+		if (user) {
+			loadRooms();
+		}
+	}, [user, loadRooms]);
 
+	const handleCreateRoom = useCallback(async (name: string): Promise<void> => {
 		try {
 			const body: RoomCreateRequest = { name };
 			const room = await roomApi.create(body);
@@ -47,16 +55,42 @@ export function App(): React.JSX.Element {
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create room");
 		}
-	};
+	}, []);
 
-	const handleDeleteRoom = async (roomId: string): Promise<void> => {
+	const handleDeleteRoom = useCallback(async (roomId: string): Promise<void> => {
 		try {
 			await roomApi.delete(roomId);
 			setRooms((prev) => prev.filter((r) => r.id !== roomId));
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to delete room");
 		}
-	};
+	}, []);
+
+	// -- Auth guard renders --
+
+	if (authLoading) {
+		return (
+			<div
+				style={{
+					minHeight: "100vh",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					backgroundColor: "#0a0a1a",
+					color: "#e0e0e0",
+					fontFamily: "system-ui, sans-serif",
+				}}
+			>
+				<p>読み込み中...</p>
+			</div>
+		);
+	}
+
+	if (!user) {
+		return <LoginForm />;
+	}
+
+	// -- Authenticated views --
 
 	if (view.type === "review") {
 		return (
@@ -120,6 +154,8 @@ export function App(): React.JSX.Element {
 		);
 	}
 
+	const trimmedName = newRoomName.trim();
+
 	return (
 		<div
 			style={{
@@ -131,7 +167,32 @@ export function App(): React.JSX.Element {
 			}}
 		>
 			<div style={{ maxWidth: "600px", margin: "0 auto" }}>
-				<h1 style={{ fontSize: "1.8rem", marginBottom: "8px" }}>Memory Palace</h1>
+				<div
+					style={{
+						display: "flex",
+						justifyContent: "space-between",
+						alignItems: "center",
+						marginBottom: "8px",
+					}}
+				>
+					<h1 style={{ fontSize: "1.8rem", margin: 0 }}>Memory Palace</h1>
+					<button
+						type="button"
+						onClick={logout}
+						style={{
+							padding: "6px 14px",
+							backgroundColor: "transparent",
+							color: "#888",
+							border: "1px solid #3a3a5c",
+							borderRadius: "6px",
+							cursor: "pointer",
+							fontSize: "0.8rem",
+						}}
+						data-testid="logout-button"
+					>
+						ログアウト
+					</button>
+				</div>
 				<p style={{ color: "#888", marginBottom: "32px" }}>記憶宮殿 - 間隔反復学習ツール</p>
 
 				{/* Error */}
@@ -171,15 +232,19 @@ export function App(): React.JSX.Element {
 						/>
 						<button
 							type="button"
-							onClick={handleCreateRoom}
-							disabled={newRoomName.trim().length === 0}
+							onClick={() => {
+								if (trimmedName.length > 0 && trimmedName.length <= 100) {
+									handleCreateRoom(trimmedName);
+								}
+							}}
+							disabled={trimmedName.length === 0}
 							style={{
 								padding: "10px 20px",
-								backgroundColor: newRoomName.trim().length > 0 ? "#0066cc" : "#333",
-								color: newRoomName.trim().length > 0 ? "#fff" : "#666",
+								backgroundColor: trimmedName.length > 0 ? "#0066cc" : "#333",
+								color: trimmedName.length > 0 ? "#fff" : "#666",
 								border: "none",
 								borderRadius: "8px",
-								cursor: newRoomName.trim().length > 0 ? "pointer" : "not-allowed",
+								cursor: trimmedName.length > 0 ? "pointer" : "not-allowed",
 								fontSize: "0.9rem",
 								whiteSpace: "nowrap",
 							}}

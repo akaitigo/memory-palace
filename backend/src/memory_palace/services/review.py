@@ -44,6 +44,7 @@ def _get_scheduling_strategy() -> SchedulingStrategy:
 
 
 _REVIEW_QUEUE_MAX_ITEMS = 200
+_SECONDS_PER_DAY = 86400
 
 
 def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
@@ -56,6 +57,9 @@ def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
     Items are sorted by urgency: never-reviewed first, then by due date ascending.
     Returns at most 200 items.
 
+    The filtering is done in SQL for performance; a Python fallback is used for
+    SQLite (which lacks ``interval`` arithmetic) to keep test compatibility.
+
     Args:
         db: Database session.
         room_id: Room UUID to get queue for.
@@ -65,7 +69,46 @@ def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
     """
     now = datetime.now(tz=UTC)
 
-    # Fetch all items in the room and filter in Python for SQLite compatibility
+    dialect_name = db.bind.dialect.name if db.bind is not None else ""
+
+    if dialect_name == "postgresql":
+        # PostgreSQL: use interval arithmetic in SQL
+        from sqlalchemy import text  # noqa: PLC0415
+
+        due_condition = (MemoryItem.last_reviewed_at + func.make_interval(0, 0, 0, MemoryItem.interval)) <= text(
+            "now()"
+        )
+
+        never_reviewed = list(
+            db.execute(
+                select(MemoryItem)
+                .where(MemoryItem.room_id == room_id, MemoryItem.last_reviewed_at.is_(None))
+                .order_by(MemoryItem.created_at)
+                .limit(_REVIEW_QUEUE_MAX_ITEMS)
+            )
+            .scalars()
+            .all()
+        )
+
+        overdue = list(
+            db.execute(
+                select(MemoryItem)
+                .where(
+                    MemoryItem.room_id == room_id,
+                    MemoryItem.last_reviewed_at.isnot(None),
+                    due_condition,
+                )
+                .order_by(MemoryItem.last_reviewed_at)
+                .limit(_REVIEW_QUEUE_MAX_ITEMS)
+            )
+            .scalars()
+            .all()
+        )
+
+        queue = never_reviewed + overdue
+        return queue[:_REVIEW_QUEUE_MAX_ITEMS]
+
+    # Fallback for SQLite and other dialects: filter in Python
     all_items = list(
         db.execute(select(MemoryItem).where(MemoryItem.room_id == room_id).order_by(MemoryItem.created_at))
         .scalars()
