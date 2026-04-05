@@ -5,18 +5,34 @@
 import type {
 	DailyStatsResponse,
 	ForgettingCurveResponse,
+	LoginRequest,
 	MemoryItem,
 	MemoryItemCreateRequest,
 	MemoryItemUpdateRequest,
+	RegisterRequest,
 	ReviewRecordCreate,
 	ReviewRecordResponse,
 	Room,
 	RoomCreateRequest,
 	RoomStatsResponse,
 	RoomUpdateRequest,
+	TokenResponse,
+	UserResponse,
 } from "@/types/api";
 
 const BASE_URL = "/api";
+const TOKEN_KEY = "memory_palace_token";
+
+/** Callback invoked when a 401 response is received (token expired / invalid). */
+let onUnauthorized: (() => void) | null = null;
+
+/**
+ * Register a global handler that is called on 401 responses.
+ * Used by AuthProvider to trigger logout + redirect to login screen.
+ */
+export function setOnUnauthorized(handler: (() => void) | null): void {
+	onUnauthorized = handler;
+}
 
 class ApiError extends Error {
 	constructor(
@@ -28,16 +44,31 @@ class ApiError extends Error {
 	}
 }
 
+function getToken(): string | null {
+	try {
+		return localStorage.getItem(TOKEN_KEY);
+	} catch {
+		return null;
+	}
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+	const token = getToken();
+	const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
 	const response = await fetch(`${BASE_URL}${path}`, {
 		headers: {
 			"Content-Type": "application/json",
+			...authHeaders,
 			...options?.headers,
 		},
 		...options,
 	});
 
 	if (!response.ok) {
+		if (response.status === 401) {
+			onUnauthorized?.();
+		}
 		const errorBody = await response.text().catch(() => "Unknown error");
 		throw new ApiError(response.status, `API error ${response.status}: ${errorBody}`);
 	}
@@ -145,6 +176,30 @@ export const reviewApi = {
 
 	getForgettingCurve(roomId: string): Promise<ForgettingCurveResponse> {
 		return request<ForgettingCurveResponse>(`/rooms/${roomId}/stats/forgetting-curve`);
+	},
+};
+
+// =============================================================================
+// Auth API
+// =============================================================================
+
+export const authApi = {
+	register(data: RegisterRequest): Promise<TokenResponse> {
+		return request<TokenResponse>("/auth/register", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	},
+
+	login(data: LoginRequest): Promise<TokenResponse> {
+		return request<TokenResponse>("/auth/login", {
+			method: "POST",
+			body: JSON.stringify(data),
+		});
+	},
+
+	me(): Promise<UserResponse> {
+		return request<UserResponse>("/auth/me");
 	},
 };
 

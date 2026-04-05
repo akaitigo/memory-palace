@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, itemApi, reviewApi, roomApi } from "./api";
+import { ApiError, authApi, itemApi, reviewApi, roomApi, setOnUnauthorized } from "./api";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -41,6 +41,8 @@ function mockErrorResponse(status: number, message: string): Response {
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	localStorage.clear();
+	setOnUnauthorized(null);
 });
 
 afterEach(() => {
@@ -272,5 +274,109 @@ describe("ApiError", () => {
 				expect(err.message).toContain("Internal error");
 			}
 		}
+	});
+});
+
+describe("authApi", () => {
+	describe("register", () => {
+		it("posts registration data", async () => {
+			const tokenResp = { access_token: "tok", token_type: "bearer" };
+			mockFetch.mockResolvedValueOnce(mockResponse(tokenResp, 201));
+
+			const result = await authApi.register({
+				username: "newuser",
+				email: "new@test.com",
+				password: "password123",
+			});
+
+			expect(result).toEqual(tokenResp);
+			expect(mockFetch).toHaveBeenCalledWith(
+				"/api/auth/register",
+				expect.objectContaining({
+					method: "POST",
+					body: expect.stringContaining("newuser"),
+				}),
+			);
+		});
+	});
+
+	describe("login", () => {
+		it("posts login credentials", async () => {
+			const tokenResp = { access_token: "tok", token_type: "bearer" };
+			mockFetch.mockResolvedValueOnce(mockResponse(tokenResp));
+
+			const result = await authApi.login({
+				username: "testuser",
+				password: "password123",
+			});
+
+			expect(result).toEqual(tokenResp);
+			expect(mockFetch).toHaveBeenCalledWith(
+				"/api/auth/login",
+				expect.objectContaining({
+					method: "POST",
+					body: expect.stringContaining("testuser"),
+				}),
+			);
+		});
+	});
+
+	describe("me", () => {
+		it("fetches current user", async () => {
+			const user = { id: "1", username: "testuser", email: "test@test.com", created_at: "2026-01-01" };
+			mockFetch.mockResolvedValueOnce(mockResponse(user));
+
+			const result = await authApi.me();
+			expect(result).toEqual(user);
+		});
+	});
+});
+
+describe("Authorization header", () => {
+	it("sends Bearer token when token exists in localStorage", async () => {
+		localStorage.setItem("memory_palace_token", "my-jwt-token");
+		mockFetch.mockResolvedValueOnce(mockResponse([]));
+
+		await roomApi.list();
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			"/api/rooms",
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: "Bearer my-jwt-token",
+				}),
+			}),
+		);
+	});
+
+	it("does not send Authorization header when no token", async () => {
+		mockFetch.mockResolvedValueOnce(mockResponse([]));
+
+		await roomApi.list();
+
+		const callHeaders = mockFetch.mock.calls[0]?.[1]?.headers;
+		expect(callHeaders).not.toHaveProperty("Authorization");
+	});
+});
+
+describe("401 handler", () => {
+	it("calls onUnauthorized callback on 401 response", async () => {
+		const handler = vi.fn();
+		setOnUnauthorized(handler);
+
+		mockFetch.mockResolvedValueOnce(mockErrorResponse(401, "Unauthorized"));
+
+		await expect(roomApi.list()).rejects.toThrow(ApiError);
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
+	it("does not call onUnauthorized on other errors", async () => {
+		const handler = vi.fn();
+		setOnUnauthorized(handler);
+
+		mockFetch.mockResolvedValueOnce(mockErrorResponse(500, "Server error"));
+
+		await expect(roomApi.list()).rejects.toThrow(ApiError);
+		expect(handler).not.toHaveBeenCalled();
 	});
 });
