@@ -7,6 +7,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from memory_palace.api.auth import router as auth_router
 from memory_palace.api.health import router as health_router
 from memory_palace.api.reviews import router as reviews_router
 from memory_palace.api.rooms import router as rooms_router
@@ -20,7 +21,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
-    cors_origins_raw = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+    cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
     cors_origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
 
     app.add_middleware(
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(rooms_router)
     app.include_router(reviews_router)
 

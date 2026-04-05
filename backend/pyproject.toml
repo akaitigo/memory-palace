@@ -10,6 +10,8 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pydantic>=2.10",
     "alembic>=1.14",
+    "PyJWT>=2.9",
+    "bcrypt>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -104,6 +106,7 @@ max-branches = 12
     "ANN",     # テストの型注釈は任意
     "ARG",     # fixture の未使用引数
     "PLR2004", # マジックナンバー許可
+    "TCH002",  # pytest fixture の型ヒントはランタイムで参照される
 ]
 "src/**/models/**/*.py" = [
     "TCH003",  # SQLAlchemy Mapped はランタイムで型解決が必要
@@ -114,6 +117,11 @@ max-branches = 12
 "src/**/api/**/*.py" = [
     "B008",    # FastAPI Depends() は引数デフォルトとして呼び出す必要がある
     "TC003",   # FastAPI はパスパラメータ型をランタイムで解決するため uuid 等が必要
+    "TCH001",  # FastAPI Annotated[..., Depends()] はランタイムで型が必要
+    "TCH002",  # FastAPI Annotated[..., Depends()] はランタイムで型が必要
+]
+"src/**/auth.py" = [
+    "TCH002",  # FastAPI Annotated[..., Depends()] はランタイムで型が必要
 ]
 "alembic/**/*.py" = [
     "ANN",     # マイグレーションの型注釈は任意

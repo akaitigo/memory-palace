@@ -139,7 +139,8 @@ export const reviewApi = {
 	},
 
 	getDailyStats(roomId: string, days = 30): Promise<DailyStatsResponse> {
-		return request<DailyStatsResponse>(`/rooms/${roomId}/stats/daily?days=${days}`);
+		const params = new URLSearchParams({ days: String(days) });
+		return request<DailyStatsResponse>(`/rooms/${roomId}/stats/daily?${params.toString()}`);
 	},
 
 	getForgettingCurve(roomId: string): Promise<ForgettingCurveResponse> {
