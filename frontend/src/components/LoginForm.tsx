@@ -5,8 +5,21 @@
 
 import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPasswordStrength, type PasswordStrength, passwordStrengthPercent } from "@/lib/passwordStrength";
 
 type Mode = "login" | "register";
+
+const STRENGTH_COLORS: Record<PasswordStrength, string> = {
+	weak: "#ff4444",
+	medium: "#ffaa00",
+	strong: "#00cc66",
+};
+
+const STRENGTH_LABELS: Record<PasswordStrength, string> = {
+	weak: "弱い",
+	medium: "普通",
+	strong: "強い",
+};
 
 function isFormValid(mode: Mode, username: string, email: string, password: string): boolean {
 	if (mode === "login") {
@@ -48,6 +61,7 @@ export function LoginForm(): React.JSX.Element {
 	);
 
 	const canSubmit = isFormValid(mode, username, email, password) && !submitting;
+	const passwordStrength = getPasswordStrength(password);
 
 	return (
 		<div style={styles.wrapper}>
@@ -114,6 +128,29 @@ export function LoginForm(): React.JSX.Element {
 							style={styles.input}
 							data-testid="auth-password"
 						/>
+						{mode === "register" && password.length > 0 && (
+							<div
+								style={styles.strengthWrapper}
+								data-testid="password-strength"
+								data-strength={passwordStrength.label}
+							>
+								<div style={styles.strengthTrack}>
+									<div
+										style={{
+											...styles.strengthFill,
+											width: `${passwordStrengthPercent(passwordStrength)}%`,
+											backgroundColor: STRENGTH_COLORS[passwordStrength.label],
+										}}
+									/>
+								</div>
+								<span
+									style={{ ...styles.strengthLabel, color: STRENGTH_COLORS[passwordStrength.label] }}
+									data-testid="password-strength-label"
+								>
+									{STRENGTH_LABELS[passwordStrength.label]}
+								</span>
+							</div>
+						)}
 					</div>
 
 					<button
@@ -205,6 +242,29 @@ const styles = {
 		fontSize: "0.95rem",
 		outline: "none",
 		boxSizing: "border-box" as const,
+	},
+	strengthWrapper: {
+		display: "flex",
+		alignItems: "center",
+		gap: "8px",
+		marginTop: "8px",
+	},
+	strengthTrack: {
+		flex: 1,
+		height: "6px",
+		backgroundColor: "#2a2a4a",
+		borderRadius: "3px",
+		overflow: "hidden",
+	},
+	strengthFill: {
+		height: "100%",
+		borderRadius: "3px",
+		transition: "width 0.2s ease, background-color 0.2s ease",
+	},
+	strengthLabel: {
+		fontSize: "0.8rem",
+		minWidth: "2.5em",
+		textAlign: "right" as const,
 	},
 	submitButton: {
 		width: "100%",
