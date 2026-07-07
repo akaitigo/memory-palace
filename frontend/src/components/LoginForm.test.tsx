@@ -128,4 +128,46 @@ describe("LoginForm", () => {
 
 		expect(mockClearError).toHaveBeenCalled();
 	});
+
+	it("does not show the password strength indicator in login mode", async () => {
+		const user = userEvent.setup();
+		render(<LoginForm />);
+
+		await user.type(screen.getByTestId("auth-password"), "password123");
+
+		expect(screen.queryByTestId("password-strength")).toBeNull();
+	});
+
+	it("does not show the strength indicator in register mode with an empty password", async () => {
+		const user = userEvent.setup();
+		render(<LoginForm />);
+
+		await user.click(screen.getByTestId("auth-toggle"));
+
+		expect(screen.queryByTestId("password-strength")).toBeNull();
+	});
+
+	it("shows a weak strength indicator for a short password in register mode", async () => {
+		const user = userEvent.setup();
+		render(<LoginForm />);
+
+		await user.click(screen.getByTestId("auth-toggle"));
+		await user.type(screen.getByTestId("auth-password"), "abc");
+
+		const indicator = screen.getByTestId("password-strength");
+		expect(indicator).toHaveAttribute("data-strength", "weak");
+		expect(screen.getByTestId("password-strength-label")).toHaveTextContent("弱い");
+	});
+
+	it("shows a strong strength indicator for a complex password in register mode", async () => {
+		const user = userEvent.setup();
+		render(<LoginForm />);
+
+		await user.click(screen.getByTestId("auth-toggle"));
+		await user.type(screen.getByTestId("auth-password"), "Str0ng!Pass");
+
+		const indicator = screen.getByTestId("password-strength");
+		expect(indicator).toHaveAttribute("data-strength", "strong");
+		expect(screen.getByTestId("password-strength-label")).toHaveTextContent("強い");
+	});
 });
