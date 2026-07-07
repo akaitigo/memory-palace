@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,28 +15,18 @@ from memory_palace.schemas.auth import LoginRequest, RegisterRequest, TokenRespo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# Basic email regex — prevents obviously invalid emails without pulling in a
-# heavy validation dependency.
-_EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> dict[str, str]:
     """Register a new user account.
 
-    Returns a JWT access token on success.
+    Returns a JWT access token on success. Email format is validated by the
+    ``EmailStr`` field on :class:`RegisterRequest`, which returns 422 for
+    malformed addresses before this handler runs.
 
     Raises:
         HTTPException: 409 if username or email already exists.
-        HTTPException: 422 if the email format is invalid.
     """
-    # Validate email format
-    if not _EMAIL_PATTERN.match(body.email):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid email format",
-        )
-
     # Check for existing username
     existing_user = db.execute(select(User).where(User.username == body.username)).scalar_one_or_none()
     if existing_user is not None:

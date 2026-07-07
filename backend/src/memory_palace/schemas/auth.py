@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -17,9 +17,8 @@ class RegisterRequest(BaseModel):
         max_length=100,
         description="Username (3-100 characters)",
     )
-    email: str = Field(
+    email: EmailStr = Field(
         ...,
-        min_length=1,
         max_length=255,
         description="Email address",
     )

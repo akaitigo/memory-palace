@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Annotated
 
 import bcrypt
@@ -55,24 +56,45 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ---------------------------------------------------------------------------
 # JWT token management
 # ---------------------------------------------------------------------------
-_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 _ALGORITHM = "HS256"
+_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 
+@lru_cache(maxsize=1)
 def _get_jwt_secret() -> str:
-    """Read JWT_SECRET from environment variables.
+    """Read and cache JWT_SECRET from environment variables.
+
+    The secret is read once and cached for the lifetime of the process, so JWT
+    operations do not re-read the environment on every request. Tests that need
+    to change ``JWT_SECRET`` at runtime must call ``_get_jwt_secret.cache_clear()``
+    afterwards.
 
     Returns:
         The JWT secret key.
 
     Raises:
-        RuntimeError: If JWT_SECRET is not set or is empty.
+        RuntimeError: If JWT_SECRET is not set or is empty. The exception is not
+            cached, so a later call after the variable is set will still succeed.
     """
     secret = os.environ.get("JWT_SECRET", "")
     if not secret:
         msg = "JWT_SECRET environment variable is not set"
         raise RuntimeError(msg)
     return secret
+
+
+@lru_cache(maxsize=1)
+def _get_access_token_expire_minutes() -> int:
+    """Read and cache the access-token lifetime in minutes.
+
+    Controlled by the ``JWT_EXPIRE_MINUTES`` environment variable, defaulting to
+    60 minutes. Cached like :func:`_get_jwt_secret`; call
+    ``_get_access_token_expire_minutes.cache_clear()`` in tests that override it.
+
+    Returns:
+        The access-token lifetime in minutes.
+    """
+    return int(os.environ.get("JWT_EXPIRE_MINUTES", str(_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)))
 
 
 def create_access_token(user_id: uuid.UUID) -> str:
@@ -84,7 +106,7 @@ def create_access_token(user_id: uuid.UUID) -> str:
     Returns:
         An encoded JWT string.
     """
-    expire = datetime.now(tz=UTC) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(tz=UTC) + timedelta(minutes=_get_access_token_expire_minutes())
     payload = {
         "sub": str(user_id),
         "exp": expire,
