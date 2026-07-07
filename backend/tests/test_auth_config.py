@@ -83,7 +83,8 @@ class TestAccessTokenExpiry:
     def test_token_reflects_configured_expiry(self):
         """create_access_token applies the configured expiry to the token."""
         user_id = uuid.uuid4()
-        with patch.dict("os.environ", {"JWT_SECRET": "cfg-secret", "JWT_EXPIRE_MINUTES": "5"}):
+        secret = "cfg-secret-key-that-is-at-least-32-bytes-long"
+        with patch.dict("os.environ", {"JWT_SECRET": secret, "JWT_EXPIRE_MINUTES": "5"}):
             token = create_access_token(user_id)
-            payload = jwt.decode(token, "cfg-secret", algorithms=[_ALGORITHM])
+            payload = jwt.decode(token, secret, algorithms=[_ALGORITHM])
             assert payload["exp"] - payload["iat"] == 5 * 60
