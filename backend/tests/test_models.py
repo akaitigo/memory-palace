@@ -6,9 +6,29 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import create_engine, event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from memory_palace.database import Base
 from memory_palace.models import MemoryItem, ReviewRecord, ReviewSession, Room, User
+
+
+def _make_fk_sqlite_engine():
+    """Create an in-memory SQLite engine with foreign key enforcement enabled.
+
+    SQLite only enforces foreign keys when ``PRAGMA foreign_keys=ON`` is set per
+    connection, so a connect listener enables it. Used to exercise the
+    rooms.owner_id foreign key behaviour.
+    """
+    engine = create_engine("sqlite:///:memory:")
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _connection_record):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
+    return engine
+
 
 # Use the shared conftest fixtures: db_session, _setup_db
 
@@ -201,6 +221,52 @@ class TestRoomModel:
         repr_str = repr(room)
         assert "Room" in repr_str
         assert "ReprRoom" in repr_str
+
+    def test_owner_id_has_foreign_key_to_users(self):
+        """rooms.owner_id declares a SET NULL foreign key to users.id."""
+        fks = list(Room.__table__.c.owner_id.foreign_keys)
+        assert len(fks) == 1
+        fk = fks[0]
+        assert fk.column.table.name == "users"
+        assert fk.column.name == "id"
+        assert fk.ondelete == "SET NULL"
+
+    def test_deleting_owner_nulls_room_owner_id(self):
+        """Deleting a user detaches (SET NULL) their rooms rather than orphaning them."""
+        engine = _make_fk_sqlite_engine()
+        Base.metadata.create_all(engine)
+        try:
+            with Session(engine) as session:
+                user = User(username="owner1", email="owner1@example.com", password_hash="x")
+                session.add(user)
+                session.commit()
+                room = Room(name="Owned Room", owner_id=user.id)
+                session.add(room)
+                session.commit()
+                room_id = room.id
+
+                session.delete(user)
+                session.commit()
+
+                refreshed = session.get(Room, room_id)
+                assert refreshed is not None
+                assert refreshed.owner_id is None
+        finally:
+            Base.metadata.drop_all(engine)
+            engine.dispose()
+
+    def test_owner_id_rejects_nonexistent_user(self):
+        """A room referencing a non-existent owner is rejected by the foreign key."""
+        engine = _make_fk_sqlite_engine()
+        Base.metadata.create_all(engine)
+        try:
+            with Session(engine) as session:
+                session.add(Room(name="Orphan Room", owner_id=uuid.uuid4()))
+                with pytest.raises(IntegrityError):
+                    session.commit()
+        finally:
+            Base.metadata.drop_all(engine)
+            engine.dispose()
 
 
 # =============================================================================

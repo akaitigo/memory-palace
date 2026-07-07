@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, String, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,7 @@ class Room(Base):
     )
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
