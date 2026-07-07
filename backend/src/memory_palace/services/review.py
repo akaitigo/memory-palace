@@ -108,7 +108,13 @@ def get_review_queue(db: Session, room_id: uuid.UUID) -> list[MemoryItem]:
         queue = never_reviewed + overdue
         return queue[:_REVIEW_QUEUE_MAX_ITEMS]
 
-    # Fallback for SQLite and other dialects: filter in Python
+    # Fallback for SQLite and other dialects: filter and sort in Python.
+    #
+    # Production runs exclusively on PostgreSQL and always takes the SQL branch
+    # above. This path exists only so the test suite can run against an in-memory
+    # SQLite database, which lacks the interval arithmetic the PostgreSQL query
+    # relies on. It is not intended for production use: it loads all of a room's
+    # items before filtering rather than pushing the due-date filter into SQL.
     all_items = list(
         db.execute(select(MemoryItem).where(MemoryItem.room_id == room_id).order_by(MemoryItem.created_at))
         .scalars()
