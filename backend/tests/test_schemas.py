@@ -13,6 +13,7 @@ from memory_palace.schemas import (
     MemoryItemResponse,
     MemoryItemUpdate,
     PositionSchema,
+    RegisterRequest,
     ReviewRecordCreate,
     ReviewRecordResponse,
     ReviewSessionResponse,
@@ -181,6 +182,31 @@ class TestMemoryItemCreate:
         with pytest.raises(ValidationError):
             MemoryItemCreate(content="Test", image_url="https://example.com/" + "a" * 2048)
 
+    def test_image_url_none_allowed(self):
+        """Omitting image_url is allowed."""
+        item = MemoryItemCreate(content="No image")
+        assert item.image_url is None
+
+    def test_image_url_explicit_none_allowed(self):
+        """Explicitly passing image_url=None is allowed."""
+        item = MemoryItemCreate(content="No image", image_url=None)
+        assert item.image_url is None
+
+    @pytest.mark.parametrize(
+        "bad_url",
+        [
+            "http://example.com/a.png",
+            "javascript:alert(1)",
+            "ftp://example.com/a.png",
+            "https://",
+            "example.com/a.png",
+        ],
+    )
+    def test_image_url_non_https_rejected(self, bad_url: str):
+        """Non-https or host-less image URLs are rejected."""
+        with pytest.raises(ValidationError):
+            MemoryItemCreate(content="Test", image_url=bad_url)
+
     def test_position_out_of_bounds_rejected(self):
         """Memory item with out-of-bounds position is rejected."""
         with pytest.raises(ValidationError):
@@ -204,6 +230,16 @@ class TestMemoryItemUpdate:
         update = MemoryItemUpdate(position=PositionSchema(x=5.0, y=6.0, z=7.0))
         assert update.position is not None
         assert update.position.x == 5.0
+
+    def test_update_image_url_https_allowed(self):
+        """MemoryItemUpdate accepts an https image URL."""
+        update = MemoryItemUpdate(image_url="https://example.com/new.png")
+        assert update.image_url == "https://example.com/new.png"
+
+    def test_update_image_url_non_https_rejected(self):
+        """MemoryItemUpdate rejects a non-https image URL."""
+        with pytest.raises(ValidationError):
+            MemoryItemUpdate(image_url="http://example.com/new.png")
 
 
 class TestMemoryItemResponse:
@@ -373,3 +409,38 @@ class TestReviewSessionResponse:
         )
         assert len(response.review_records) == 1
         assert response.review_records[0].quality == 5
+
+
+# =============================================================================
+# RegisterRequest validation tests (EmailStr)
+# =============================================================================
+
+
+class TestRegisterRequest:
+    """Tests for RegisterRequest email validation via EmailStr."""
+
+    def test_valid_email_accepted(self):
+        """A well-formed email address is accepted."""
+        req = RegisterRequest(username="alice", email="alice@example.com", password="password123")
+        assert req.email == "alice@example.com"
+
+    @pytest.mark.parametrize(
+        "bad_email",
+        [
+            "not-an-email",
+            "missing-at.example.com",
+            "a@b",
+            "@example.com",
+            "",
+        ],
+    )
+    def test_invalid_email_rejected(self, bad_email: str):
+        """Malformed email addresses are rejected by EmailStr."""
+        with pytest.raises(ValidationError):
+            RegisterRequest(username="alice", email=bad_email, password="password123")
+
+    def test_email_exceeding_max_length_rejected(self):
+        """An email longer than 255 characters is rejected."""
+        long_email = "a" * 250 + "@example.com"
+        with pytest.raises(ValidationError):
+            RegisterRequest(username="alice", email=long_email, password="password123")

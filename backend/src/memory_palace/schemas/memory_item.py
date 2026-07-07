@@ -4,8 +4,33 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _validate_https_image_url(value: str | None) -> str | None:
+    """Ensure an image URL, when provided, is a well-formed ``https://`` URL.
+
+    Rejects non-https schemes (e.g. ``http://``, ``javascript:``) and URLs
+    without a host, mitigating XSS and mixed-content risks.
+
+    Args:
+        value: The candidate image URL, or None when omitted.
+
+    Returns:
+        The validated URL unchanged, or None.
+
+    Raises:
+        ValueError: If the URL is not an ``https://`` URL with a host.
+    """
+    if value is None:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        msg = "image_url must be a valid https:// URL"
+        raise ValueError(msg)
+    return value
 
 
 class PositionSchema(BaseModel):
@@ -43,12 +68,17 @@ class MemoryItemCreate(BaseModel):
     image_url: str | None = Field(
         default=None,
         max_length=2048,
-        description="Optional image URL",
+        description="Optional image URL (must be https://)",
     )
     position: PositionSchema = Field(
         default_factory=lambda: PositionSchema(x=0.0, y=0.0, z=0.0),
         description="3D position in the room",
     )
+
+    @field_validator("image_url")
+    @classmethod
+    def _check_image_url(cls, value: str | None) -> str | None:
+        return _validate_https_image_url(value)
 
 
 class MemoryItemUpdate(BaseModel):
@@ -63,12 +93,17 @@ class MemoryItemUpdate(BaseModel):
     image_url: str | None = Field(
         default=None,
         max_length=2048,
-        description="Optional image URL",
+        description="Optional image URL (must be https://)",
     )
     position: PositionSchema | None = Field(
         default=None,
         description="3D position in the room",
     )
+
+    @field_validator("image_url")
+    @classmethod
+    def _check_image_url(cls, value: str | None) -> str | None:
+        return _validate_https_image_url(value)
 
 
 class MemoryItemResponse(BaseModel):
