@@ -31,7 +31,7 @@
 		"@types/three": "^0.185.1",
 		"@vitejs/plugin-react": "^6.0.4",
 		"@vitest/coverage-v8": "^4.1.6",
-		"jsdom": "^29.1.1",
+		"jsdom": "^30.0.0",
 		"oxlint": "^1.74.0",
 		"typescript": "^6.0.3",
 		"vite": "^8.1.5",
